@@ -39,7 +39,7 @@ class DataProcessor(BaseDataProcessor):
         # File parameters
         file_path = kwargs.get('file_path', None)
         file_encoding = kwargs.get('file_encoding', 'utf-8')
-        header = kwargs.get('header', 'utf-8')
+        header = kwargs.get('header', 0)
 
         # Database parameters
         dsn = kwargs.get('dsn', None)
@@ -69,7 +69,13 @@ class DataProcessor(BaseDataProcessor):
         self.raw_data_df.drop(col_list, axis=1, inplace=True)
 
     def _one_hot_encode(self, col_list):
-        pass
+        dummy_df_list = list()
+        for col in col_list:
+            dummy = pd.get_dummies(self.raw_data_df[col])
+            dummy_df_list.append(dummy)
+        all_dummy_df = pd.concat(dummy_df_list, axis=1)
+        self.raw_data_df.drop(col_list, axis=1, inplace=True)
+        self.raw_data_df = pd.concat([self.raw_data_df, all_dummy_df], axis=1)
 
     def _one_n_encode(self, col_list):
         pass

@@ -1,0 +1,10 @@
+{
+  "DATA_LOAD": {
+    "DROP_COL": ["sepal_length"],
+    "ONE_HOT_ENCODE_COL": ["species"],
+    "ONE_N_ENCODE_COL": [],
+    "NORMALIZE_COL": [],
+    "STANDARDIZE_COL": [],
+    "IMPUTE_COL": []
+  }
+}

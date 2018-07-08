@@ -1,13 +1,8 @@
-import os
+from __future__ import absolute_import
+from ...pipeline.data_processor import data_loader
 import json
-import pandas as pd
-import sys
+import os
 
-parent_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
-util_path = os.path.join(parent_path, 'data_processor')
-sys.path.append(parent_path)
-sys.path.append(util_path)
-from data_processor import data_loader
 
 if __name__ == '__main__':
     base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -20,4 +15,6 @@ if __name__ == '__main__':
                             input_type='csv',
                             file_path=input_file_name)
     data_handler.data_cleaning(config=config_file.get('DATA_LOAD'))
-    print(data_handler.raw_data_df)
+
+    # Checking
+    data_handler.adj_data_df.to_csv('check.csv', index=False)

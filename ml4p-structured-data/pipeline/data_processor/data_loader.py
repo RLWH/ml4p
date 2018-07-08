@@ -1,13 +1,19 @@
 from __future__ import absolute_import
-from base_data_loader import BaseDataProcessor
+from .base_data_loader import BaseDataProcessor
 import pandas as pd
 import pyodbc
+from sklearn import preprocessing as sk_preprocess
 
 
 class DataProcessor(BaseDataProcessor):
     def __init__(self):
         self.raw_data_df = None
+        self.adj_data_df = None
         self.split_data_dict = dict()
+        self.one_n_encoder = dict()
+        self.normalizer = dict()
+        self.standardizer = dict()
+        self.imputer = dict()
         self.valid_source = {'file', 'db'}
         self.valid_input_type = {'csv', 'tsv'}
 
@@ -66,28 +72,56 @@ class DataProcessor(BaseDataProcessor):
                                      encoding=db_encoding)
 
     def _drop_col(self, col_list):
-        self.raw_data_df.drop(col_list, axis=1, inplace=True)
+        self.adj_data_df.drop(col_list, axis=1, inplace=True)
 
     def _one_hot_encode(self, col_list):
         dummy_df_list = list()
         for col in col_list:
-            dummy = pd.get_dummies(self.raw_data_df[col])
+            dummy = pd.get_dummies(self.adj_data_df[col], prefix=col)
             dummy_df_list.append(dummy)
         all_dummy_df = pd.concat(dummy_df_list, axis=1)
-        self.raw_data_df.drop(col_list, axis=1, inplace=True)
-        self.raw_data_df = pd.concat([self.raw_data_df, all_dummy_df], axis=1)
+        self.adj_data_df.drop(col_list, axis=1, inplace=True)
+        self.adj_data_df = pd.concat([self.adj_data_df, all_dummy_df], axis=1)
 
     def _one_n_encode(self, col_list):
-        pass
+        for col in col_list:
+            distinct_val_list = sorted(list(set(self.adj_data_df[col])))
+            map_dict = {key: value for value, key in enumerate(distinct_val_list)}
+            reverse_map_dict = {value: key for key, value in map_dict.items()}
+            self.adj_data_df[col] = self.adj_data_df[col].apply(lambda x: map_dict.get(x))
+            self.one_n_encoder[col] = reverse_map_dict
 
     def _normalize(self, col_list):
-        pass
+        for col, para in col_list.items():
+            if para == "default":
+                normalizer = sk_preprocess.Normalizer()
+            else:
+                normalizer = sk_preprocess.Normalizer(**para)
+            normalized_values = normalizer.fit_transform(self.adj_data_df[col].values.reshape(1, -1))
+            self.adj_data_df[col] = normalized_values[0]
+            self.normalizer[col] = normalizer
 
     def _standardize(self, col_list):
-        pass
+        for col, para in col_list.items():
+            if para == "default":
+                standardizer = sk_preprocess.StandardScaler()
+            else:
+                standardizer = sk_preprocess.StandardScaler(**para)
+            reshaped_list = self.adj_data_df[col].values.reshape(-1, 1)
+            standardized_values = standardizer.fit_transform(reshaped_list)
+            self.adj_data_df[col] = standardized_values.reshape(1, -1)[0]
+            self.standardizer[col] = standardizer
 
     def _impute(self, col_list):
-        pass
+        for col, para in col_list.items():
+            if para == "default":
+                imputer = sk_preprocess.Imputer()
+            else:
+                imputer = sk_preprocess.Imputer(**para)
+            reshaped_list = self.adj_data_df[col].values.reshape(-1, 1)
+            imputed_values = imputer.fit_transform(reshaped_list)
+            self.adj_data_df[col] = imputed_values.reshape(1, -1)[0]
+            self.imputer[col] = imputer
 
     def data_cleaning(self, config):
         drop_col_list = config.get('DROP_COL')
@@ -97,12 +131,19 @@ class DataProcessor(BaseDataProcessor):
         standardize_list = config.get('STANDARDIZE_COL')
         impute_list = config.get("IMPUTE_COL")
 
-        self._drop_col(col_list=drop_col_list)
-        self._one_hot_encode(col_list=one_hot_encode_list)
-        self._one_n_encode(col_list=one_n_encode_list)
-        self._normalize(col_list=normalize_list)
-        self._standardize(col_list=standardize_list)
-        self._impute(col_list=impute_list)
+        self.adj_data_df = self.raw_data_df.copy()
+        if drop_col_list:
+            self._drop_col(col_list=drop_col_list)
+        if one_hot_encode_list:
+            self._one_hot_encode(col_list=one_hot_encode_list)
+        if one_n_encode_list:
+            self._one_n_encode(col_list=one_n_encode_list)
+        if normalize_list:
+            self._normalize(col_list=normalize_list)
+        if standardize_list:
+            self._standardize(col_list=standardize_list)
+        if impute_list:
+            self._impute(col_list=impute_list)
 
     def train_test_split(self):
         pass

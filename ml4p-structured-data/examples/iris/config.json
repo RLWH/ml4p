@@ -1,0 +1,25 @@
+{
+  "DATA_LOAD": {
+    "DROP_COL": [
+      "sepal_length"
+    ],
+    "ONE_HOT_ENCODE_COL": [],
+    "ONE_N_ENCODE_COL": [
+      "species"
+    ],
+    "NORMALIZE_COL": {
+      "sepal_width": "default",
+      "petal_length": {
+        "norm": "l1"
+      }
+    },
+    "STANDARDIZE_COL": {
+      "petal_width": "default"
+    },
+    "IMPUTE_COL": {
+      "check_missing": {
+        "strategy": "mean"
+      }
+    }
+  }
+}

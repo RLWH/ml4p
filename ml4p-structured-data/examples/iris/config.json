@@ -1,5 +1,5 @@
 {
-  "DATA_LOAD": {
+  "DATA_PROCESSING": {
     "DROP_COL": [
       "sepal_length"
     ],
@@ -20,6 +20,32 @@
       "check_missing": {
         "strategy": "mean"
       }
+    },
+    "DIM_REDUCTION": {
+      "col_list": ["sepal_width", "petal_length", "petal_width"],
+      "method": {
+        "pca": {
+          "k": 2,
+          "transform": "NORMALIZE",
+          "pca_method": "GramSVD",
+          "use_all_factor_levels": true,
+          "impute_missing": true,
+          "seed": 101
+        }
+      }
+    },
+    "TRAIN_TEST_SPLIT": {
+      "split_method": "random",
+      "split_mode": [
+        "train",
+        "validation",
+        "test"
+      ],
+      "proportion": [
+        0.6,
+        0.3,
+        0.1
+      ]
     }
   }
 }

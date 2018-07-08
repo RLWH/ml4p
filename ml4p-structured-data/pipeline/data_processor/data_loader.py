@@ -1,11 +1,20 @@
 from __future__ import absolute_import
 from .base_data_loader import BaseDataProcessor
+from sklearn import preprocessing as sk_preprocess
+from h2o.transforms import decomposition as h2o_decomposition
+import h2o
+import numpy as np
 import pandas as pd
 import pyodbc
-from sklearn import preprocessing as sk_preprocess
+import random
 
 
 class DataProcessor(BaseDataProcessor):
+    valid_source = {'file', 'db'}
+    valid_input_type = {'csv', 'tsv'}
+    valid_split = {'random'}
+    valid_dim_reduction = {'pca'}
+
     def __init__(self):
         self.raw_data_df = None
         self.adj_data_df = None
@@ -14,8 +23,6 @@ class DataProcessor(BaseDataProcessor):
         self.normalizer = dict()
         self.standardizer = dict()
         self.imputer = dict()
-        self.valid_source = {'file', 'db'}
-        self.valid_input_type = {'csv', 'tsv'}
 
     def _fetch_data_from_file(self, input_type, file_path, encoding, header):
         if input_type == 'csv':
@@ -145,5 +152,61 @@ class DataProcessor(BaseDataProcessor):
         if impute_list:
             self._impute(col_list=impute_list)
 
-    def train_test_split(self):
-        pass
+    def dim_reduction(self, config):
+        selected_config = config.get('DIM_REDUCTION')
+        method = list(selected_config.get('method').keys())[0]
+        col_list = selected_config.get('col_list')
+        para = selected_config.get('method')[method]
+
+        if len(selected_config.get('method').keys()) > 1:
+            raise ValueError("There can be only 1 dimensionality reduction method")
+        if method not in self.valid_dim_reduction:
+            raise ValueError("{} is not a valid dimensionality reduction method".format(method))
+        if col_list != 'all' and type(col_list) is not list:
+            raise ValueError("col_list is not valid")
+
+        if col_list == 'all':
+            col_list = list(self.adj_data_df.columns)
+
+        if method == 'pca':
+            h2o.init()
+            h2o_frame = h2o.H2OFrame(self.adj_data_df[col_list])
+            if para == 'default':
+                h2o_pca = h2o_decomposition.H2OPCA()
+            else:
+                h2o_pca = h2o_decomposition.H2OPCA(**para)
+            h2o_pca.train(x=col_list, training_frame=h2o_frame)
+            pca_df = h2o_pca.predict(h2o_frame).as_data_frame()
+            self.adj_data_df.drop(col_list, axis=1, inplace=True)
+            self.adj_data_df = pd.concat([self.adj_data_df, pca_df], axis=1)
+            h2o.cluster().shutdown()
+
+    def train_test_split(self, config):
+        selected_config = config.get('TRAIN_TEST_SPLIT')
+        split_method = selected_config.get('split_method')
+        split_mode = selected_config.get('split_mode')
+        proportion = selected_config.get('proportion')
+
+        if split_method not in self.valid_split:
+            raise ValueError("split_method {} is not implemented".format(split_method))
+        if len(split_mode) != len(proportion):
+            raise ValueError("split_mode and proportion must be of the same lengths")
+        if abs(sum(proportion) - 1) > 1e-10:
+            raise ValueError("Elements in proportion must sum to 1")
+
+        if split_method == 'random':
+            index_list = list(self.adj_data_df.index)
+            record_count = len(index_list)
+            random.shuffle(index_list)
+            start_counter = 0
+            last_counter = 0
+            for name, p in zip(split_mode, proportion):
+                n = int(np.floor(record_count * p))
+                if last_counter != len(proportion) - 1:
+                    temp_index_list = index_list[start_counter:(start_counter + n)]
+                else:
+                    temp_index_list = index_list[start_counter:]
+                start_counter += n
+                self.split_data_dict[name] = self.adj_data_df.loc[temp_index_list]
+                self.split_data_dict[name].to_csv('check_{}.csv'.format(name), index=False)
+                last_counter += 1

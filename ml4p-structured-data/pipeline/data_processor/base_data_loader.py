@@ -12,5 +12,5 @@ class BaseDataProcessor(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def train_test_split(self):
+    def train_test_split(self, *args, **kwargs):
         pass

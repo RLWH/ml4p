@@ -1,51 +1,71 @@
 {
-  "DATA_PROCESSING": {
-    "DROP_COL": [
-      "sepal_length"
-    ],
-    "ONE_HOT_ENCODE_COL": [],
-    "ONE_N_ENCODE_COL": [
-      "species"
-    ],
-    "NORMALIZE_COL": {
-      "sepal_width": "default",
-      "petal_length": {
-        "norm": "l1"
-      }
+  "PIPELINE": [
+    {
+      "DROP_COL": [
+        "sepal_length"
+      ]
     },
-    "STANDARDIZE_COL": {
-      "petal_width": "default"
+    {
+      "ONE_HOT_ENCODE_COL": []
     },
-    "IMPUTE_COL": {
-      "check_missing": {
-        "strategy": "mean"
-      }
+    {
+      "ONE_N_ENCODE_COL": [
+        "species"
+      ]
     },
-    "DIM_REDUCTION": {
-      "col_list": ["sepal_width", "petal_length", "petal_width"],
-      "method": {
-        "pca": {
-          "k": 2,
-          "transform": "NORMALIZE",
-          "pca_method": "GramSVD",
-          "use_all_factor_levels": true,
-          "impute_missing": true,
-          "seed": 101
+    {
+      "NORMALIZE_COL": {
+        "sepal_width": "default",
+        "petal_length": {
+          "norm": "l1"
         }
       }
     },
-    "TRAIN_TEST_SPLIT": {
-      "split_method": "random",
-      "split_mode": [
-        "train",
-        "validation",
-        "test"
-      ],
-      "proportion": [
-        0.6,
-        0.3,
-        0.1
-      ]
+    {
+      "STANDARDIZE_COL": {
+        "petal_width": "default"
+      }
+    },
+    {
+      "IMPUTE_COL": {
+        "check_missing": {
+          "strategy": "mean"
+        }
+      }
+    },
+    {
+      "DIM_REDUCTION": {
+        "col_list": [
+          "sepal_width",
+          "petal_length",
+          "petal_width"
+        ],
+        "method": {
+          "pca": {
+            "k": 2,
+            "transform": "NORMALIZE",
+            "pca_method": "GramSVD",
+            "use_all_factor_levels": true,
+            "impute_missing": true,
+            "seed": 101
+          }
+        }
+      }
+    },
+    {
+      "TRAIN_TEST_SPLIT": {
+        "split_method": "random",
+        "split_mode": [
+          "train",
+          "validation",
+          "test"
+        ],
+        "proportion": [
+          0.6,
+          0.3,
+          0.1
+        ]
+      }
     }
-  }
+  ]
 }

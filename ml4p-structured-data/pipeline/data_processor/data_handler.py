@@ -14,7 +14,7 @@ class DataProcessor(BaseDataProcessor):
                     'db'}
     valid_input_type = {'csv',
                         'tsv'}
-    valid_split = {'random'}
+    valid_split = {'random', 'n-fold'}
     valid_dim_reduction = {'pca'}
     valid_processing_method = {'DROP_COL',
                                'ONE_HOT_ENCODE_COL',
@@ -193,31 +193,43 @@ class DataProcessor(BaseDataProcessor):
             raise ValueError("para must be a dictionary")
         if para:
             split_method = para.get('split_method')
-            split_mode = para.get('split_mode')
-            proportion = para.get('proportion')
+            split_proportion = para.get('split_proportion')
 
+            if split_method is None:
+                raise ValueError('split_method is missing')
+            if split_proportion is None:
+                raise ValueError('split_proportion is missing')
+            if split_proportion.get('train') is None or split_proportion.get('test') is None:
+                raise ValueError('train or test proportion is missing')
             if split_method not in self.valid_split:
                 raise ValueError("split_method {} is not implemented".format(split_method))
-            if len(split_mode) != len(proportion):
-                raise ValueError("split_mode and proportion must be of the same lengths")
-            if abs(sum(proportion) - 1) > 1e-10:
+            if abs(split_proportion.get('train') + split_proportion.get('test') - 1) > 1e-10:
                 raise ValueError("Elements in proportion must sum to 1")
 
+            index_list = list(self.adj_data_df.index)
+            record_count = len(index_list)
+            train_prop = split_proportion.get('train')
+            test_prop = split_proportion.get('test')
+            n = int(np.floor(record_count * train_prop))
+
             if split_method == 'random':
-                index_list = list(self.adj_data_df.index)
-                record_count = len(index_list)
                 random.shuffle(index_list)
-                start_counter = 0
-                last_counter = 0
-                for name, p in zip(split_mode, proportion):
-                    n = int(np.floor(record_count * p))
-                    if last_counter != len(proportion) - 1:
-                        temp_index_list = index_list[start_counter:(start_counter + n)]
+                train_index_list = index_list[0:n]
+                test_index_list = index_list[n:]
+                self.split_data.append({'train': self.adj_data_df.loc[train_index_list],
+                                        'test': self.adj_data_df.loc[test_index_list]})
+            elif split_method == 'n-fold':
+                num_fold = int(np.floor(1 / test_prop))
+                batch_size = record_count // num_fold
+                random.shuffle(index_list)
+                for n in range(num_fold):
+                    if n != num_fold - 1:
+                        test_index_list = index_list[n * batch_size: (n + 1) * batch_size]
                     else:
-                        temp_index_list = index_list[start_counter:]
-                    start_counter += n
-                    self.split_data_dict[name] = self.adj_data_df.loc[temp_index_list]
-                    last_counter += 1
+                        test_index_list = index_list[n * batch_size:]
+                    train_index_list = list(set(index_list) - set(test_index_list))
+                    self.split_data.append({'train': self.adj_data_df.loc[train_index_list],
+                                            'test': self.adj_data_df.loc[test_index_list]})
 
     def data_processing(self, config):
         pipeline = config.get('PIPELINE')

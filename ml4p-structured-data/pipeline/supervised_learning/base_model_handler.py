@@ -7,13 +7,19 @@ class BaseModelHandler:
 
     def __init__(self):
         self.model = None
-        self.split_data_dict = None
+        self.split_data = None
+        self.target_col = None
 
-    def load_data(self, split_data_dict):
-        self.split_data_dict = split_data_dict
+    def load_data(self, split_data, target_col):
+        self.split_data = split_data
+        self.target_col = target_col
 
     @abstractmethod
     def init_model(self, *args, **kwargs):
+        pass
+
+    @abstractmethod
+    def load_model(self, *args, **kwargs):
         pass
 
     @abstractmethod

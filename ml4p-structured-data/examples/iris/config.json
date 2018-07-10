@@ -1,4 +1,5 @@
 {
+  "TARGET_COL": [],
   "PIPELINE": [
     {
       "DROP_COL": [
@@ -54,17 +55,11 @@
     },
     {
       "TRAIN_TEST_SPLIT": {
-        "split_method": "random",
-        "split_mode": [
-          "train",
-          "validation",
-          "test"
-        ],
-        "proportion": [
-          0.6,
-          0.3,
-          0.1
-        ]
+        "split_method": "n-fold",
+        "split_proportion": {
+          "train": 0.8,
+          "test": 0.2
+        }
       }
     }
   ]

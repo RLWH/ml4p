@@ -1,0 +1,28 @@
+{
+  "PIPELINE": [
+    {
+      "model": "XGB",
+      "settings": {
+        "params": {
+          "eta": {"mode": "fixed", "values": 0.05},
+          "max_depth": {"mode": "auto", "values": {"min": 4, "max": 8, "step": 1, "dtype": "int"}},
+          "min_child_weight": {"mode": "fixed", "values": 3},
+          "subsample": {"mode": "fixed", "values": 1.0},
+          "colsample_bytree": {"mode": "fixed", "values": 1.0},
+          "gamma": {"mode": "auto", "values": {"min": 0.7, "max": 0.9, "step": 0.01, "dtype": "float"}},
+          "alpha": {"mode": "fixed", "values": 0.00002},
+          "lambda": {"mode": "fixed", "values": 10},
+          "seed": {"mode": "fixed", "values": 101},
+          "num_class": {"mode": "fixed", "values": 3},
+          "objective": {"mode": "fixed", "values": "multi:softmax"},
+          "eval_metric": {"mode": "fixed", "values": "merror"}
+        },
+        "num_boost_round": 100,
+        "early_stopping_rounds": 20,
+        "maximize": true,
+        "verbose_eval": false,
+        "max_autotune_eval_rounds": 10
+      }
+    }
+  ]
+}

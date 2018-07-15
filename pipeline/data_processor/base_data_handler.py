@@ -9,8 +9,8 @@ class BaseDataProcessor:
     def __init__(self):
         self.raw_data_df = pd.DataFrame()
         self.adj_data_df = pd.DataFrame()
+        self.all_data = pd.DataFrame()
         self.split_data = list()
-        self.target_col = list()
 
     @abstractmethod
     def fetch_data(self, *args, **kwargs):
@@ -21,4 +21,4 @@ class BaseDataProcessor:
         pass
 
     def get_training_data(self):
-        return self.split_data, self.target_col
+        return self.split_data, self.all_data

@@ -1,10 +1,7 @@
 {
-  "TARGET_COL": [],
   "PIPELINE": [
     {
-      "DROP_COL": [
-        "sepal_length"
-      ]
+      "DROP_COL": []
     },
     {
       "ONE_HOT_ENCODE_COL": []
@@ -16,14 +13,21 @@
     },
     {
       "NORMALIZE_COL": {
+        "sepal_length": "default",
         "sepal_width": "default",
         "petal_length": {
           "norm": "l1"
+        },
+        "petal_width": {
+          "norm": "l2"
         }
       }
     },
     {
       "STANDARDIZE_COL": {
+        "sepal_length": "default",
+        "sepal_width": "default",
+        "petal_length": "default",
         "petal_width": "default"
       }
     },
@@ -35,31 +39,18 @@
       }
     },
     {
-      "DIM_REDUCTION": {
-        "col_list": [
-          "sepal_width",
-          "petal_length",
-          "petal_width"
-        ],
-        "method": {
-          "pca": {
-            "k": 2,
-            "transform": "NORMALIZE",
-            "pca_method": "GramSVD",
-            "use_all_factor_levels": true,
-            "impute_missing": true,
-            "seed": 101
-          }
-        }
-      }
-    },
-    {
       "TRAIN_TEST_SPLIT": {
         "split_method": "n-fold",
         "split_proportion": {
           "train": 0.8,
           "test": 0.2
-        }
+        },
+        "target_col": [
+          "species"
+        ],
+        "exclude_col": [
+          "check_missing"
+        ]
       }
     }
   ]

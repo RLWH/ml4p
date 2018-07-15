@@ -2,17 +2,19 @@ from __future__ import absolute_import
 from abc import abstractmethod, ABCMeta
 
 
-class BaseModelHandler:
+class BaseModel:
     __metaclass__ = ABCMeta
+    split_data = None
+    all_data = None
 
     def __init__(self):
         self.model = None
-        self.split_data = None
-        self.target_col = None
+        self.eval = None
 
-    def load_data(self, split_data, target_col):
-        self.split_data = split_data
-        self.target_col = target_col
+    @classmethod
+    def set_data(cls, split_data, all_data):
+        cls.split_data = split_data
+        cls.all_data = all_data
 
     @abstractmethod
     def init_model(self, *args, **kwargs):
@@ -24,6 +26,10 @@ class BaseModelHandler:
 
     @abstractmethod
     def train_model(self, *args, **kwargs):
+        pass
+
+    @abstractmethod
+    def save_model(self, *args, **kwargs):
         pass
 
     @abstractmethod

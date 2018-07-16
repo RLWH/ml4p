@@ -1,5 +1,4 @@
 from __future__ import absolute_import
-from .base_data_handler import BaseDataProcessor
 from sklearn import preprocessing as sk_preprocess
 from h2o.transforms import decomposition as h2o_decomposition
 import h2o
@@ -9,7 +8,7 @@ import pyodbc
 import random
 
 
-class DataProcessor(BaseDataProcessor):
+class DataProcessor:
     valid_source = {'file',
                     'db'}
     valid_input_type = {'csv',
@@ -23,14 +22,21 @@ class DataProcessor(BaseDataProcessor):
                                'STANDARDIZE_COL',
                                'IMPUTE_COL',
                                'DIM_REDUCTION',
-                               'TRAIN_TEST_SPLIT'}
+                               'TRAIN_TEST_SPLIT',
+                               'CUSTOM_FUNC'}
 
     def __init__(self):
         self.one_n_encoder = dict()
         self.normalizer = dict()
         self.standardizer = dict()
         self.imputer = dict()
-        super(DataProcessor, self).__init__()
+        self.raw_data_df = pd.DataFrame()
+        self.adj_data_df = pd.DataFrame()
+        self.all_data = pd.DataFrame()
+        self.split_data = list()
+
+    def get_training_data(self):
+        return self.split_data, self.all_data
 
     def _fetch_data_from_file(self, input_type, file_path, encoding, header):
         if input_type == 'csv':
@@ -198,7 +204,6 @@ class DataProcessor(BaseDataProcessor):
         split_proportion = para.get('split_proportion')
         target_col = para.get('target_col')
         exclude_col = para.get('exclude_col')
-        feature_col = list(set(self.adj_data_df.columns) - set(target_col) - set(exclude_col))
 
         if split_method is None:
             raise ValueError('split_method is missing')
@@ -206,14 +211,17 @@ class DataProcessor(BaseDataProcessor):
             raise ValueError('split_proportion is missing')
         if target_col is None:
             raise ValueError('target_col is missing')
-        if exclude_col is None:
-            raise ValueError('exclude_col is missing')
         if split_proportion.get('train') is None or split_proportion.get('test') is None:
             raise ValueError('train or test proportion is missing')
         if split_method not in self.valid_split:
             raise ValueError("split_method {} is not implemented".format(split_method))
         if abs(split_proportion.get('train') + split_proportion.get('test') - 1) > 1e-10:
             raise ValueError("Elements in proportion must sum to 1")
+
+        if exclude_col is None:
+            feature_col = list(set(self.adj_data_df.columns) - set(target_col))
+        else:
+            feature_col = list(set(self.adj_data_df.columns) - set(target_col) - set(exclude_col))
 
         self.all_data = {'train_x': self.adj_data_df[feature_col],
                          'train_y': self.adj_data_df[target_col]}
@@ -262,17 +270,15 @@ class DataProcessor(BaseDataProcessor):
                                         'test_x': test_x,
                                         'test_y': test_y})
 
-    def data_processing(self, config):
-        pipeline = config.get('PIPELINE')
-        if pipeline is None:
-            raise ValueError("PIPELINE is missing from the config")
-        if type(pipeline) is not list:
-            raise ValueError("PIPELINE must be a list")
+    def _custom_processing_func(self, *args, **kwargs):
+        """ To be overriden, if needed"""
+        pass
 
+    def data_processing(self, pipeline):
         self.adj_data_df = self.raw_data_df.copy()
         for p in pipeline:
-            method = list(p.keys())[0]
-            para = p.get(method)
+            method = p.get('method')
+            para = p.get('para')
             if method not in DataProcessor.valid_processing_method:
                 raise ValueError("{} is not implemented".format(method))
 
@@ -292,3 +298,8 @@ class DataProcessor(BaseDataProcessor):
                 self._dim_reduction(para=para)
             elif method == 'TRAIN_TEST_SPLIT':
                 self._train_test_split(para=para)
+            elif method == 'CUSTOM_FUNC':
+                if para is not None:
+                    self._custom_processing_func(**para)
+                else:
+                    self._custom_processing_func()

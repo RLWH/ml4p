@@ -74,16 +74,46 @@
       "model": "GBM",
       "settings": {
         "params": {
-          "ntrees": {"mode": "fixed", "values": 100},
-          "learn_rate": {"mode": "fixed", "values": 0.3},
-          "max_depth": {"mode": "fixed", "values": 4},
-          "sample_rate": {"mode": "fixed", "values": 0.8},
-          "col_sample_rate": {"mode": "fixed", "values": 0.8},
-          "stopping_rounds": {"mode": "fixed", "values": 2},
-          "stopping_tolerance": {"mode": "fixed", "values": 0.01},
-          "stopping_metric": {"mode": "fixed", "values": "misclassification"},
-          "seed": {"mode": "fixed", "values": 101},
-          "distribution": {"mode": "fixed", "values": "multinomial"}
+          "ntrees": {
+            "mode": "fixed",
+            "values": 100
+          },
+          "learn_rate": {
+            "mode": "fixed",
+            "values": 0.3
+          },
+          "max_depth": {
+            "mode": "fixed",
+            "values": 4
+          },
+          "sample_rate": {
+            "mode": "fixed",
+            "values": 0.8
+          },
+          "col_sample_rate": {
+            "mode": "fixed",
+            "values": 0.8
+          },
+          "stopping_rounds": {
+            "mode": "fixed",
+            "values": 2
+          },
+          "stopping_tolerance": {
+            "mode": "fixed",
+            "values": 0.01
+          },
+          "stopping_metric": {
+            "mode": "fixed",
+            "values": "misclassification"
+          },
+          "seed": {
+            "mode": "fixed",
+            "values": 101
+          },
+          "distribution": {
+            "mode": "fixed",
+            "values": "bernoulli"
+          }
         }
       }
     }

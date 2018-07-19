@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 from .base_sl_model import BaseModel
 from ..misc import util
-from hyperopt.pyll.base import scope
 import h2o
 from h2o.estimators.gbm import H2OGradientBoostingEstimator
 from h2o.estimators.random_forest import H2ORandomForestEstimator
@@ -69,6 +68,45 @@ class XGBModel(BaseModel):
     def init_model(self, *args, **kwargs):
         self.model = xgb.Booster()
 
+    def _eval_results(self, hp_params):
+        loss_list = list()
+        best_iter_list = list()
+        num_boost_round = self.other_para['num_boost_round']
+        early_stopping_rounds = self.other_para['early_stopping_rounds']
+        maximize = self.other_para['maximize']
+        verbose_eval = self.other_para['verbose_eval']
+        eval_metric_name = self.other_para['eval_metric_name']
+        for s in BaseModel.split_data:
+            train_x = s['train_x']
+            train_y = s['train_y']
+            test_x = s['test_x']
+            test_y = s['test_y']
+            d_train = xgb.DMatrix(train_x, label=train_y)
+            d_test = xgb.DMatrix(test_x, label=test_y)
+            watchlist = [(d_train, 'train'), (d_test, 'test')]
+            progress = dict()
+            temp_model = xgb.train(params=hp_params,
+                                   dtrain=d_train,
+                                   num_boost_round=num_boost_round,
+                                   evals=watchlist,
+                                   early_stopping_rounds=early_stopping_rounds,
+                                   evals_result=progress,
+                                   maximize=maximize,
+                                   verbose_eval=verbose_eval)
+            best_iter = int(temp_model.best_iteration)
+            evals_test_result = progress.get('test')
+            eval_metric = evals_test_result.get(eval_metric_name)[best_iter]
+            if maximize:
+                loss = -1 * eval_metric
+            else:
+                loss = eval_metric
+            loss_list.append(loss)
+            best_iter_list.append(best_iter)
+        output_dict = {'loss': np.average(loss_list),
+                       'best_iter': int(np.average(best_iter_list)),
+                       'status': hyperopt.STATUS_OK}
+        return output_dict
+
     def train_model(self, *args, **kwargs):
         params = kwargs.get('params')
         num_boost_round = kwargs.get('num_boost_round')
@@ -86,102 +124,33 @@ class XGBModel(BaseModel):
         if maximize is None:
             raise ValueError("maximize is missing")
 
-        # Adjust the format of params
-        # TODO: Abstraction
-        # TODO: Replace maximum
-        adj_params = dict()
-        int_params_list = list()
-        auto_tune = False
-        for k in params.keys():
-            mode = params[k]['mode']
-            values = params[k]['values']
-            if mode == 'auto':
-                auto_tune = True
-                min_val = values.get('min')
-                max_val = values.get('max')
-                step = values.get('step')
-                dtype = values.get('dtype')
-                if dtype == 'int':
-                    adj_params[k] = scope.int(hyperopt.hp.quniform(k, min_val, max_val, step))
-                    int_params_list.append(k)
-                elif dtype == 'float':
-                    adj_params[k] = hyperopt.hp.uniform(k, min_val, max_val)
-            elif mode == 'fixed':
-                adj_params[k] = values
-            else:
-                raise ValueError('mode {} is not implemented'.format(mode))
-
-        eval_metric_name = params['eval_metric']['values']
-
-        def _eval_results(hp_params):
-            loss_list = list()
-            best_iter_list = list()
-            for s in BaseModel.split_data:
-                train_x = s['train_x']
-                train_y = s['train_y']
-                test_x = s['test_x']
-                test_y = s['test_y']
-
-                d_train = xgb.DMatrix(train_x, label=train_y)
-                d_test = xgb.DMatrix(test_x, label=test_y)
-
-                watchlist = [(d_train, 'train'), (d_test, 'test')]
-                progress = dict()
-
-                temp_model = xgb.train(params=hp_params,
-                                       dtrain=d_train,
-                                       num_boost_round=num_boost_round,
-                                       evals=watchlist,
-                                       early_stopping_rounds=early_stopping_rounds,
-                                       evals_result=progress,
-                                       maximize=maximize,
-                                       verbose_eval=verbose_eval)
-
-                best_iter = temp_model.best_iteration
-                evals_test_result = progress.get('test')
-                eval_metric = evals_test_result.get(eval_metric_name)[-1]
-                print('{}: {} - Para: {}'.format(eval_metric_name, eval_metric, hp_params))
-                if maximize:
-                    loss = -1 * eval_metric
-                else:
-                    loss = eval_metric
-                loss_list.append(loss)
-                best_iter_list.append(best_iter)
-            output_dict = {'loss': np.average(loss_list),
-                           'best_iter': np.average(best_iter_list),
-                           'status': hyperopt.STATUS_OK}
-            return output_dict
+        self.raw_model_para = params
+        self.other_para['eval_metric_name'] = params['eval_metric']['values']
+        self.other_para['num_boost_round'] = num_boost_round
+        self.other_para['early_stopping_rounds'] = early_stopping_rounds
+        self.other_para['maximize'] = maximize
+        self.other_para['verbose_eval'] = verbose_eval
+        self.auto_tune_rounds = max_autotune_eval_rounds
+        self.adj_params(after_ht=False)
 
         # Auto-tuning parameters
-        # TODO: Abstraction
-        if auto_tune:
-            trials = hyperopt.Trials()
-            best_params = hyperopt.fmin(fn=_eval_results,
-                                        space=adj_params,
-                                        algo=hyperopt.tpe.suggest,
-                                        max_evals=max_autotune_eval_rounds,
-                                        trials=trials)
-            for key in best_params.keys():
-                if key in int_params_list:
-                    adj_params[key] = int(best_params[key])
-                else:
-                    adj_params[key] = float(best_params[key])
+        if self.auto_tune:
+            self.adj_params(after_ht=True)
 
         # Get evaluation metrics
-        eval_dict = _eval_results(hp_params=adj_params)
+        eval_dict = self._eval_results(hp_params=self.best_model_para)
         best_iter = int(eval_dict['best_iter'])
         assert best_iter >= 0
-
         if maximize:
             metric_val = -1 * eval_dict['loss']
         else:
             metric_val = eval_dict['loss']
-        self.eval = {'metric': eval_metric_name,
+        self.eval = {'metric': self.other_para['eval_metric_name'],
                      'value': metric_val}
 
         # Train on all data
         d_train_all = xgb.DMatrix(BaseModel.all_data['train_x'], label=BaseModel.all_data['train_y'])
-        self.model = xgb.train(params=adj_params,
+        self.model = xgb.train(params=self.best_model_para,
                                dtrain=d_train_all,
                                num_boost_round=best_iter + 1,
                                verbose_eval=True)
@@ -190,7 +159,6 @@ class XGBModel(BaseModel):
         model_path = kwargs.get('model_path')
         if model_path is None:
             raise ValueError('output_path cannot be empty')
-
         hash_code = util.get_hash()
         with open(os.path.join(model_path, 'xgb_{}.pickle'.format(hash_code)), 'wb') as f:
             pickle.dump(self.model, f, pickle.HIGHEST_PROTOCOL)

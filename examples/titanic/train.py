@@ -68,6 +68,5 @@ if __name__ == '__main__':
         model_handler.add_model(model_name=model_name,
                                 model_settings=model_settings)
 
-    model_handler.init_model()
     model_handler.train_model()
-    model_handler.save_model(key='XGB')
+    model_handler.report_results()

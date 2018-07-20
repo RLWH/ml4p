@@ -1,5 +1,5 @@
 from __future__ import absolute_import
-from .base_sl_model import BaseModel
+from .base_sl_model import BaseModel, BaseH2OModel
 from ..misc import util
 import h2o
 from h2o.estimators.gbm import H2OGradientBoostingEstimator
@@ -39,12 +39,6 @@ class TrainModelHandler:
         else:
             raise ValueError('Model {} is not implemented'.format(model_name))
 
-    def init_model(self):
-        for key in self.model_dict.keys():
-            print('[{}] Initializing {}'.format(util.get_time_now(), key))
-            settings = self.setting_dict[key]
-            self.model_dict[key].init_model(**settings)
-
     def train_model(self):
         for key in self.model_dict.keys():
             print('[{}] Training {}'.format(util.get_time_now(), key))
@@ -56,6 +50,10 @@ class TrainModelHandler:
             print('[{}] Evaluating {}'.format(util.get_time_now(), key))
             self.model_dict[key].eval_model()
 
+    def report_results(self):
+        for key in self.model_dict.keys():
+            print('{}: {}'.format(key, self.model_dict[key].eval))
+
     def save_model(self, key):
         settings = self.setting_dict[key]
         self.model_dict[key].save_model(**settings)
@@ -65,9 +63,6 @@ class TrainModelHandler:
 
 
 class XGBModel(BaseModel):
-    def init_model(self, *args, **kwargs):
-        self.model = xgb.Booster()
-
     def _eval_results(self, hp_params):
         loss_list = list()
         best_iter_list = list()
@@ -170,6 +165,7 @@ class XGBModel(BaseModel):
             raise ValueError('model_path is missing')
         if model_name is None:
             raise ValueError('model_name is missing')
+        self.model = xgb.Booster()
         with open(os.path.join(model_path, model_name), 'rb') as f:
             self.model = pickle.load(f)
 
@@ -184,163 +180,27 @@ class XGBModel(BaseModel):
         return predictions
 
 
-class GBMModel(BaseModel):
-    def init_model(self, *args, **kwargs):
-        self.model = H2OGradientBoostingEstimator()
-
-    def train_model(self, *args, **kwargs):
-        params = kwargs.get('params')
-
-        if params is None:
-            raise ValueError("params is missing")
-
-        # Adjust the format of params
-        adj_params = dict()
-        int_params_list = list()
-        auto_tune = False
-        for k in params.keys():
-            mode = params[k]['mode']
-            values = params[k]['values']
-            if mode == 'auto':
-                auto_tune = True
-                min_val = values.get('min')
-                max_val = values.get('max')
-                step = values.get('step')
-                dtype = values.get('dtype')
-                if dtype == 'int':
-                    adj_params[k] = scope.int(hyperopt.hp.quniform(k, min_val, max_val, step))
-                    int_params_list.append(k)
-                elif dtype == 'float':
-                    adj_params[k] = hyperopt.hp.uniform(k, min_val, max_val)
-            elif mode == 'fixed':
-                adj_params[k] = values
-            else:
-                raise ValueError('mode {} is not implemented'.format(mode))
-
-        eval_metric_name = params['stopping_metric']['values']
-
-        def _eval_results(hp_params):
-            loss_list = list()
-            best_iter_list = list()
-            for s in BaseModel.split_data:
-                train_x = s['train_x']
-                train_y = s['train_y']
-                test_x = s['test_x']
-                test_y = s['test_y']
-
-                d_train = h2o.H2OFrame(pd.concat([train_x, train_y], axis=1))
-                d_test = h2o.H2OFrame(pd.concat([test_x, test_y], axis=1))
-
-                gbm = H2OGradientBoostingEstimator(**hp_params)
-
-                # Train the gbm model
-                gbm.train(X_name, y_name, training_frame=d_train, validation_frame=d_test)
-                # evals_test_result = progress.get('test')
-                # eval_metric = evals_test_result.get(eval_metric_name)[-1]
-                print('{}: {} - Para: {}'.format(eval_metric_name, eval_metric, hp_params))
-                if maximize:
-                    loss = -1 * eval_metric
-                else:
-                    loss = eval_metric
-                loss_list.append(loss)
-                best_iter_list.append(best_iter)
-            output_dict = {'loss': np.average(loss_list),
-                           'best_iter': np.average(best_iter_list),
-                           'status': hyperopt.STATUS_OK}
-            return output_dict
-
-        # Auto-tuning parameters
-        if auto_tune:
-            trials = hyperopt.Trials()
-            best_params = hyperopt.fmin(fn=_eval_results,
-                                        space=adj_params,
-                                        algo=hyperopt.tpe.suggest,
-                                        max_evals=max_autotune_eval_rounds,
-                                        trials=trials)
-            for key in best_params.keys():
-                if key in int_params_list:
-                    adj_params[key] = int(best_params[key])
-                else:
-                    adj_params[key] = float(best_params[key])
-
-        # Get evaluation metrics
-        eval_dict = _eval_results(hp_params=adj_params)
-        best_iter = int(eval_dict['best_iter'])
-        assert best_iter >= 0
-
-        if maximize:
-            metric_val = -1 * eval_dict['loss']
-        else:
-            metric_val = eval_dict['loss']
-        self.eval = {'metric': eval_metric_name,
-                     'value': metric_val}
-
-        # Train on all data
-        d_train_all = xgb.DMatrix(BaseModel.all_data['train_x'], label=BaseModel.all_data['train_y'])
-        self.model = xgb.train(params=adj_params,
-                               dtrain=d_train_all,
-                               num_boost_round=best_iter + 1,
-                               verbose_eval=True)
-
-    def save_model(self, *args, **kwargs):
-        pass
-
-    def load_model(self, *args, **kwargs):
-        pass
-
-    def predict(self, *args, **kwargs):
-        pass
+class GBMModel(BaseH2OModel):
+    def __init__(self):
+        super(GBMModel, self).__init__()
+        self.h2o_estimator = H2OGradientBoostingEstimator
 
 
-class RFModel(BaseModel):
-    def init_model(self, *args, **kwargs):
-        pass
-
-    def load_model(self, *args, **kwargs):
-        pass
-
-    def train_model(self, *args, **kwargs):
-        pass
-
-    def save_model(self, *args, **kwargs):
-        pass
-
-    def predict(self, *args, **kwargs):
-        pass
+class RFModel(BaseH2OModel):
+    def __init__(self):
+        super(RFModel, self).__init__()
+        self.h2o_estimator = H2ORandomForestEstimator
 
 
-class GLMModel(BaseModel):
-    def init_model(self, *args, **kwargs):
-        pass
-
-    def load_model(self, *args, **kwargs):
-        pass
-
-    def train_model(self, *args, **kwargs):
-        pass
-
-    def save_model(self, *args, **kwargs):
-        pass
-
-    def predict(self, *args, **kwargs):
-        pass
+class MLPModel(BaseH2OModel):
+    def __init__(self):
+        super(MLPModel, self).__init__()
+        self.h2o_estimator = H2ODeepLearningEstimator
 
 
-class MLPModel(BaseModel):
-    def init_model(self, *args, **kwargs):
-        pass
-
-    def load_model(self, *args, **kwargs):
-        pass
-
-    def train_model(self, *args, **kwargs):
-        pass
-
-    def save_model(self, *args, **kwargs):
-        pass
-
-    def predict(self, *args, **kwargs):
-        pass
+class GLMModel(BaseH2OModel):
+    def __init__(self):
+        super(GLMModel, self).__init__()
 
 
 class NBModel(BaseModel):

@@ -115,40 +115,10 @@ class BaseH2OModel(BaseModel):
         if type(metric) is not str:
             raise ValueError("metric must be a string")
         lw_metric = metric.lower()
-        eval_metric = None
         if lw_metric not in BaseH2OModel.valid_metric:
             raise ValueError("{} is not a supported metric.".format(metric))
         else:
-            if lw_metric == 'mse':
-                eval_metric = model.mse()
-            elif lw_metric == 'rmse':
-                eval_metric = model.rmse()
-            elif lw_metric == 'mae':
-                eval_metric = model.mae()
-            elif lw_metric == 'rmsle':
-                eval_metric = model.rmsle()
-            elif lw_metric == 'r2':
-                eval_metric = model.r2()
-            elif lw_metric == 'mean_residual_deviance':
-                eval_metric = model.mean_residual_deviance()
-            elif lw_metric == 'logloss':
-                eval_metric = model.logloss()
-            elif lw_metric == 'mean_per_class_error':
-                eval_metric = model.mean_per_class_error()
-            elif lw_metric == 'null_degrees_of_freedom':
-                eval_metric = model.null_degrees_of_freedom()
-            elif lw_metric == 'residual_degrees_of_freedom':
-                eval_metric = model.residual_degrees_of_freedom()
-            elif lw_metric == 'null_deviance':
-                eval_metric = model.null_deviance()
-            elif lw_metric == 'residual_deviance':
-                eval_metric = model.residual_deviance()
-            elif lw_metric == 'aic':
-                eval_metric = model.aic()
-            elif lw_metric == 'auc':
-                eval_metric = model.auc()
-            elif lw_metric == 'gini':
-                eval_metric = model.gini()
+            eval_metric = getattr(model, metric)()
         return eval_metric
 
     def _eval_results(self, hp_params):

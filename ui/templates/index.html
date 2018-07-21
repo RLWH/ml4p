@@ -24,52 +24,15 @@
 
 <br>
 
+
 <form role="form" class='form-horizontal'>
 
-    <div id="box1" class="jumbotron">
-        <div class="form-group row">
-            <label for="inputModel1" class="col-sm-1 col-form-label">Model</label>
-            <div class="col-sm-5">
-                <select id="inputModel1" class="form-control">
-                    <option selected>Choose...</option>
-                    <option>...</option>
-                </select>
-            </div>
-        </div>
-
-        <div id='header' class="row">
-            <div class="form-group col-md-4 param1">
-                <label for="inputParam1">Parameter</label>
-            </div>
-            <div class="form-group col-md-6">
-                <label for="inputArg">Arguments</label>
-            </div>
-        </div>
-
-        <div id="container">
-            <div class="template">
-                <div class="form-row">
-                    <div class="form-group col-md-4 param1">
-                        <select id="inputParam1" class="form-control">
-                            <option selected>Choose...</option>
-                            <option>...</option>
-                        </select>
-                    </div>
-                    <div class="form-group col-md-6">
-                        <input type="password" class="form-control" id="inputArg" placeholder="Argument">
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <p class="lead">
-            <button id="btAddParam" type="button" class="btn btn-primary">Add parameters</button>
-        </p>
-
+    <div id="model-container">
     </div>
 
-    <button type="button" class="btn btn-primary ml-2">Add models</button>
+    <button type="button" class="btn btn-primary ml-2 btAddModel">Add models</button>
     <hr class="my-4">
+
     <button type="submit" class="btn btn-primary col-md-4">Run</button>
 </form>
 

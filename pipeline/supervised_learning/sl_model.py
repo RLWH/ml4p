@@ -1,11 +1,13 @@
 from __future__ import absolute_import
-from .base_sl_model import BaseModel, BaseH2OModel
+from .base_sl_model import BaseModel, BaseH2OModel, BaseSKModel
 from ..misc import util
 from h2o.estimators.gbm import H2OGradientBoostingEstimator
 from h2o.estimators.random_forest import H2ORandomForestEstimator
 from h2o.estimators.deeplearning import H2ODeepLearningEstimator
 from h2o.estimators.glm import H2OGeneralizedLinearEstimator
 from h2o.estimators.naive_bayes import H2ONaiveBayesEstimator
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
+from sklearn.svm import SVC, SVR
 import hyperopt
 import numpy as np
 import xgboost as xgb
@@ -34,8 +36,12 @@ class TrainModelHandler:
             self.model_dict[model_name] = NBModel()
         elif model_name == 'LDA':
             self.model_dict[model_name] = LDAModel()
-        elif model_name == 'SVM':
-            self.model_dict[model_name] = SVMModel()
+        elif model_name == 'QDA':
+            self.model_dict[model_name] = QDAModel()
+        elif model_name == 'SVC':
+            self.model_dict[model_name] = SVCModel()
+        elif model_name == 'SVR':
+            self.model_dict[model_name] = SVRModel()
         else:
             raise ValueError('Model {} is not implemented'.format(model_name))
 
@@ -210,35 +216,25 @@ class NBModel(BaseH2OModel):
         self.h2o_estimator = H2ONaiveBayesEstimator
 
 
-class LDAModel(BaseModel):
-    def init_model(self, *args, **kwargs):
-        pass
-
-    def load_model(self, *args, **kwargs):
-        pass
-
-    def train_model(self, *args, **kwargs):
-        pass
-
-    def save_model(self, *args, **kwargs):
-        pass
-
-    def predict(self, *args, **kwargs):
-        pass
+class LDAModel(BaseSKModel):
+    def __init__(self):
+        super(LDAModel, self).__init__()
+        self.sk_estimator = LinearDiscriminantAnalysis
 
 
-class SVMModel(BaseModel):
-    def init_model(self, *args, **kwargs):
-        pass
+class QDAModel(BaseSKModel):
+    def __init__(self):
+        super(QDAModel, self).__init__()
+        self.sk_estimator = QuadraticDiscriminantAnalysis
 
-    def load_model(self, *args, **kwargs):
-        pass
 
-    def train_model(self, *args, **kwargs):
-        pass
+class SVCModel(BaseSKModel):
+    def __init__(self):
+        super(SVCModel, self).__init__()
+        self.sk_estimator = SVC
 
-    def save_model(self, *args, **kwargs):
-        pass
 
-    def predict(self, *args, **kwargs):
-        pass
+class SVRModel(BaseSKModel):
+    def __init__(self):
+        super(SVRModel, self).__init__()
+        self.sk_estimator = SVR

@@ -7,6 +7,21 @@
       ]
     },
     {
+      "method": "IMPUTE_COL",
+      "para": {
+        "Age": {
+          "strategy": "mean"
+        }
+      }
+    },
+    {
+      "method": "FILL_NA",
+      "para": {
+        "Cabin": "Others",
+        "Embarked": "Others"
+      }
+    },
+    {
       "method": "CUSTOM_FUNC"
     },
     {

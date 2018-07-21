@@ -1,14 +1,15 @@
 from __future__ import absolute_import
 from pipeline.data_processor import data_handler
 from pipeline.supervised_learning import sl_model
+import pipeline.misc.util as util
 import json
 import os
 import re
 
 
 class TitanicDataProcessor(data_handler.DataProcessor):
-    def __init__(self):
-        super(TitanicDataProcessor, self).__init__()
+    def __init__(self, config):
+        super(TitanicDataProcessor, self).__init__(config=config)
 
     def _custom_processing_func(self, *args, **kwargs):
         def adjust_ticket(x):
@@ -43,12 +44,11 @@ if __name__ == '__main__':
     with open(os.path.join(base_dir, 'preprocess_config.json'), 'r') as f:
         data_config = json.load(f)
 
-    data_handler = TitanicDataProcessor()
+    data_handler = TitanicDataProcessor(config=data_config)
     data_handler.fetch_data(source_type='file',
                             input_type='csv',
                             file_path=input_file_name)
-    data_pipeline = data_config.get('PIPELINE')
-    data_handler.data_processing(pipeline=data_pipeline)
+    data_handler.data_processing()
     split_data, all_data = data_handler.get_training_data()
 
     # ------------------------------------------------------------------------------------------------------------------
@@ -70,3 +70,11 @@ if __name__ == '__main__':
 
     model_handler.train_model()
     model_handler.report_results()
+
+    # ------------------------------------------------------------------------------------------------------------------
+    # Export the agents
+    # ------------------------------------------------------------------------------------------------------------------
+    util.save_agent(agent=data_handler,
+                    path='data_handler.pickle')
+    util.save_agent(agent=model_handler,
+                    path='model_handler.pickle')

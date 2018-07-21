@@ -5,6 +5,7 @@ import h2o
 import hyperopt
 import numpy as np
 import pandas as pd
+import sklearn.metrics
 
 
 class BaseModel:
@@ -216,3 +217,91 @@ class BaseH2OModel(BaseModel):
 
     def predict(self, *args, **kwargs):
         pass
+
+
+class BaseSKModel(BaseModel):
+    valid_metric = [func for func in dir(sklearn.metrics) if callable(getattr(sklearn.metrics, func))]
+
+    def __init__(self):
+        super(BaseSKModel, self).__init__()
+        self.sk_estimator = None
+
+    @staticmethod
+    def get_metric(pred, actual, metric):
+        if metric == 'roc_auc_score':
+            adj_pred = [x[1] for x in pred]
+            eval_metric = getattr(sklearn.metrics, metric)(actual, adj_pred)
+        else:
+            eval_metric = getattr(sklearn.metrics, metric)(actual, pred)
+        return eval_metric
+
+    def _eval_results(self, hp_params):
+        loss_list = list()
+        maximize = self.other_para['maximize']
+        eval_metric_name = self.other_para['eval_metric_name']
+        for s in BaseModel.split_data:
+            train_x = s['train_x']
+            train_y = s['train_y']
+            test_x = s['test_x']
+            test_y = s['test_y']
+            model = self.sk_estimator(**hp_params)
+            model.fit(X=train_x, y=train_y)
+            pred = model.predict_proba(X=test_x)
+            eval_metric = self.get_metric(pred=pred, actual=test_y, metric=eval_metric_name)
+            if maximize:
+                loss = -1 * eval_metric
+            else:
+                loss = eval_metric
+            loss_list.append(loss)
+        output_dict = {'loss': np.average(loss_list),
+                       'status': hyperopt.STATUS_OK}
+        return output_dict
+
+    def train_model(self, *args, **kwargs):
+        params = kwargs.get('params')
+        maximize = kwargs.get('maximize')
+        eval_metric_name = kwargs.get('eval_metric')
+        max_autotune_eval_rounds = kwargs.get('max_autotune_eval_rounds')
+
+        if params is None:
+            raise ValueError("params is missing")
+        if maximize is None:
+            raise ValueError("maximize is missing")
+        if eval_metric_name is None:
+            raise ValueError("eval_metric is missing")
+
+        self.raw_model_para = params
+        self.other_para['eval_metric_name'] = eval_metric_name
+        self.other_para['maximize'] = maximize
+        self.auto_tune_rounds = max_autotune_eval_rounds
+        self.adj_params(after_ht=False)
+
+        # Auto-tuning parameters
+        if self.auto_tune:
+            self.adj_params(after_ht=True)
+
+        # Get evaluation metrics
+        eval_dict = self._eval_results(hp_params=self.best_model_para)
+        if maximize:
+            metric_val = -1 * eval_dict['loss']
+        else:
+            metric_val = eval_dict['loss']
+        self.eval = {'metric': self.other_para['eval_metric_name'],
+                     'value': metric_val}
+
+        # Train on all data
+        all_train_x = BaseModel.all_data['train_x']
+        all_train_y = BaseModel.all_data['train_y']
+        self.model = self.sk_estimator(**self.best_model_para)
+        self.model.fit(X=all_train_x, y=all_train_y)
+
+    def load_model(self, *args, **kwargs):
+        pass
+
+    def save_model(self, *args, **kwargs):
+        pass
+
+    def predict(self, *args, **kwargs):
+        pass
+
+

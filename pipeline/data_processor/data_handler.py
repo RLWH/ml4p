@@ -9,23 +9,27 @@ import random
 
 
 class DataProcessor:
-    valid_source = {'file',
-                    'db'}
-    valid_input_type = {'csv',
-                        'tsv'}
-    valid_split = {'random', 'n-fold'}
-    valid_dim_reduction = {'pca'}
-    valid_processing_method = {'DROP_COL',
+    valid_source = ['file',
+                    'db']
+    valid_input_type = ['csv',
+                        'tsv']
+    valid_split = ['random', 'n-fold']
+    valid_dim_reduction = ['pca']
+    valid_processing_method = ['DROP_COL',
                                'ONE_HOT_ENCODE_COL',
                                'ONE_N_ENCODE_COL',
                                'NORMALIZE_COL',
                                'STANDARDIZE_COL',
                                'IMPUTE_COL',
+                               'FILL_NA',
                                'DIM_REDUCTION',
                                'TRAIN_TEST_SPLIT',
-                               'CUSTOM_FUNC'}
+                               'CUSTOM_FUNC']
 
-    def __init__(self):
+    def __init__(self, config):
+        if config.get('PIPELINE') is None:
+            raise ValueError("PIPELINE is missing from config")
+        self.config = config
         self.one_n_encoder = dict()
         self.normalizer = dict()
         self.standardizer = dict()
@@ -163,6 +167,13 @@ class DataProcessor:
                 self.adj_data_df[col] = imputed_values.reshape(1, -1)[0]
                 self.imputer[col] = imputer
 
+    def _fill_na(self, para):
+        if type(para) is not dict:
+            raise ValueError("para must be a dictionary")
+        if para:
+            for col, v in para.items():
+                self.adj_data_df[col].fillna(v, inplace=True)
+
     def _dim_reduction(self, para):
         if type(para) is not dict:
             raise ValueError("para must be a dictionary")
@@ -274,9 +285,9 @@ class DataProcessor:
         """ To be overriden, if needed"""
         pass
 
-    def data_processing(self, pipeline):
+    def data_processing(self):
         self.adj_data_df = self.raw_data_df.copy()
-        for p in pipeline:
+        for p in self.config['PIPELINE']:
             method = p.get('method')
             para = p.get('para')
             if method not in DataProcessor.valid_processing_method:
@@ -294,6 +305,8 @@ class DataProcessor:
                 self._standardize(para=para)
             elif method == 'IMPUTE_COL':
                 self._impute(para=para)
+            elif method == 'FILL_NA':
+                self._fill_na(para=para)
             elif method == 'DIM_REDUCTION':
                 self._dim_reduction(para=para)
             elif method == 'TRAIN_TEST_SPLIT':

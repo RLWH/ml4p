@@ -164,7 +164,13 @@ class BaseH2OModel(BaseModel):
             d_test = h2o.H2OFrame(pd.concat([test_x, test_y], axis=1))
             X_name = list(train_x.columns)
             y_name = list(train_y.columns)[0]
-            if hp_params['distribution'] in BaseH2OModel.categorical_distribution:
+            if hp_params.get('distribution') is not None:
+                check = hp_params.get('distribution')
+            elif hp_params.get('family') is not None:
+                check = hp_params.get('family')
+            else:
+                check = None
+            if check in BaseH2OModel.categorical_distribution or check is None:
                 d_train[y_name] = d_train[y_name].asfactor()
                 d_test[y_name] = d_test[y_name].asfactor()
             if hp_params.get('hidden') is not None:
@@ -184,13 +190,18 @@ class BaseH2OModel(BaseModel):
     def train_model(self, *args, **kwargs):
         params = kwargs.get('params')
         maximize = kwargs.get('maximize')
+        eval_metric_name = kwargs.get('eval_metric')
         max_autotune_eval_rounds = kwargs.get('max_autotune_eval_rounds')
 
         if params is None:
             raise ValueError("params is missing")
+        if maximize is None:
+            raise ValueError("maximize is missing")
+        if eval_metric_name is None:
+            raise ValueError("eval_metric is missing")
 
         self.raw_model_para = params
-        self.other_para['eval_metric_name'] = params['stopping_metric']['values']
+        self.other_para['eval_metric_name'] = eval_metric_name
         self.other_para['maximize'] = maximize
         self.auto_tune_rounds = max_autotune_eval_rounds
         self.adj_params(after_ht=False)
@@ -214,7 +225,15 @@ class BaseH2OModel(BaseModel):
         X_name = list(all_train_x.columns)
         y_name = list(all_train_y.columns)[0]
         d_train_all = h2o.H2OFrame(pd.concat([all_train_x, all_train_y], axis=1))
-        if self.best_model_para['distribution'] in BaseH2OModel.categorical_distribution:
+
+        # Cast target column to factor if necessary
+        if self.best_model_para.get('distribution') is not None:
+            check = self.best_model_para.get('distribution')
+        elif self.best_model_para.get('family') is not None:
+            check = self.best_model_para.get('family')
+        else:
+            check = None
+        if check in BaseH2OModel.categorical_distribution or check is None:
             d_train_all[y_name] = d_train_all[y_name].asfactor()
         self.model = self.h2o_estimator(**self.best_model_para)
         self.model.train(X_name, y_name, training_frame=d_train_all)

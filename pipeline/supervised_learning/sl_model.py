@@ -1,15 +1,15 @@
 from __future__ import absolute_import
 from .base_sl_model import BaseModel, BaseH2OModel
 from ..misc import util
-import h2o
 from h2o.estimators.gbm import H2OGradientBoostingEstimator
 from h2o.estimators.random_forest import H2ORandomForestEstimator
 from h2o.estimators.deeplearning import H2ODeepLearningEstimator
+from h2o.estimators.glm import H2OGeneralizedLinearEstimator
+from h2o.estimators.naive_bayes import H2ONaiveBayesEstimator
 import hyperopt
 import numpy as np
 import xgboost as xgb
 import os
-import pandas as pd
 import pickle
 
 
@@ -201,23 +201,13 @@ class MLPModel(BaseH2OModel):
 class GLMModel(BaseH2OModel):
     def __init__(self):
         super(GLMModel, self).__init__()
+        self.h2o_estimator = H2OGeneralizedLinearEstimator
 
 
-class NBModel(BaseModel):
-    def init_model(self, *args, **kwargs):
-        pass
-
-    def load_model(self, *args, **kwargs):
-        pass
-
-    def train_model(self, *args, **kwargs):
-        pass
-
-    def save_model(self, *args, **kwargs):
-        pass
-
-    def predict(self, *args, **kwargs):
-        pass
+class NBModel(BaseH2OModel):
+    def __init__(self):
+        super(NBModel, self).__init__()
+        self.h2o_estimator = H2ONaiveBayesEstimator
 
 
 class LDAModel(BaseModel):

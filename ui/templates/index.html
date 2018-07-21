@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link rel="stylesheet" href="../static/index.css">
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.2/css/bootstrap.min.css"
+          integrity="sha384-Smlep5jCw/wG7hdkwQ/Z5nLIefveQRIY9nfy6xoR1uRYBtpZgI6339F5dgvm/e9B" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+            integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+            crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js"
+            integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49"
+            crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.2/js/bootstrap.min.js"
+            integrity="sha384-o+RDsa0aLu++PJvFqy8fFScvbHFLtbvScb8AjopnFD+iEQ7wo/CG0xlczd+2O/em"
+            crossorigin="anonymous"></script>
+    <script src="../static/index.js"></script>
+</head>
+<body>
+<h1 id="Header1">Welcome to OrangeBear!</h1>
+<h2 id="Header2">Instruction Here....</h2>
+
+<br>
+
+<form role="form" class='form-horizontal'>
+
+    <div id="box1" class="jumbotron">
+        <div class="form-group row">
+            <label for="inputModel1" class="col-sm-1 col-form-label">Model</label>
+            <div class="col-sm-5">
+                <select id="inputModel1" class="form-control">
+                    <option selected>Choose...</option>
+                    <option>...</option>
+                </select>
+            </div>
+        </div>
+
+        <div id='header' class="row">
+            <div class="form-group col-md-4 param1">
+                <label for="inputParam1">Parameter</label>
+            </div>
+            <div class="form-group col-md-6">
+                <label for="inputArg">Arguments</label>
+            </div>
+        </div>
+
+        <div id="container">
+            <div class="template">
+                <div class="form-row">
+                    <div class="form-group col-md-4 param1">
+                        <select id="inputParam1" class="form-control">
+                            <option selected>Choose...</option>
+                            <option>...</option>
+                        </select>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <input type="password" class="form-control" id="inputArg" placeholder="Argument">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <p class="lead">
+            <button id="btAddParam" type="button" class="btn btn-primary">Add parameters</button>
+        </p>
+
+    </div>
+
+    <button type="button" class="btn btn-primary ml-2">Add models</button>
+    <hr class="my-4">
+    <button type="submit" class="btn btn-primary col-md-4">Run</button>
+</form>
+
+</body>
+</html>

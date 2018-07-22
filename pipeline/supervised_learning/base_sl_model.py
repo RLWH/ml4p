@@ -4,7 +4,9 @@ from hyperopt.pyll.base import scope
 import h2o
 import hyperopt
 import numpy as np
+import os
 import pandas as pd
+import pickle
 import sklearn.metrics
 
 
@@ -77,12 +79,13 @@ class BaseModel:
         pass
 
     @abstractmethod
-    def save_model(self, *args, **kwargs):
-        pass
-
-    @abstractmethod
     def predict(self, *args, **kwargs):
         pass
+
+    def save_model(self, output_dir, filename):
+        # Override this method if the model cannot be pickled
+        with open(os.path.join(output_dir, filename), 'wb') as f:
+            pickle.dump(self.model, f, pickle.HIGHEST_PROTOCOL)
 
 
 class BaseH2OModel(BaseModel):
@@ -212,8 +215,11 @@ class BaseH2OModel(BaseModel):
     def load_model(self, *args, **kwargs):
         pass
 
-    def save_model(self, *args, **kwargs):
-        pass
+    def save_model(self, output_dir, filename):
+        self.model.model_id = filename
+        h2o.save_model(model=self.model,
+                       path=output_dir,
+                       force=True)
 
     def predict(self, *args, **kwargs):
         pass
@@ -298,10 +304,5 @@ class BaseSKModel(BaseModel):
     def load_model(self, *args, **kwargs):
         pass
 
-    def save_model(self, *args, **kwargs):
-        pass
-
     def predict(self, *args, **kwargs):
         pass
-
-

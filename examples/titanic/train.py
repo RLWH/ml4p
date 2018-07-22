@@ -1,42 +1,41 @@
 from __future__ import absolute_import
-from pipeline.data_processor import data_handler
+from pipeline.data_processor.data_handler import DataProcessor
 from pipeline.supervised_learning import sl_model
 import pipeline.misc.util as util
 import json
 import os
-import re
 
 
-class TitanicDataProcessor(data_handler.DataProcessor):
-    def __init__(self, config):
-        super(TitanicDataProcessor, self).__init__(config=config)
+def custom_func(df):
+    import re
 
-    def _custom_processing_func(self, *args, **kwargs):
-        def adjust_ticket(x):
-            extraction = x.strip().split(' ')[0].replace('.', '').lower()
-            if re.search('[a-z]', extraction):
-                return extraction
-            else:
-                return 'others_{}'.format(len(x))
+    def adjust_ticket(x):
+        extraction = x.strip().split(' ')[0].replace('.', '').lower()
+        if re.search('[a-z]', extraction):
+            return extraction
+        else:
+            return 'others_{}'.format(len(x))
 
-        def adjust_cabin(x):
-            if type(x) is str:
-                return x[0].lower()
-            else:
-                return 'others'
+    def adjust_cabin(x):
+        if type(x) is str:
+            return x[0].lower()
+        else:
+            return 'others'
 
-        self.adj_data_df['Name'] = self.adj_data_df['Name']\
-            .apply(lambda x: x.split(',')[-1].strip().split(' ')[0].replace('.', ''))
-        self.adj_data_df['Ticket'] = self.adj_data_df['Ticket']\
-            .apply(adjust_ticket)
-        self.adj_data_df['Cabin'] = self.adj_data_df['Cabin']\
-            .apply(adjust_cabin)
+    df['Name'] = df['Name'] \
+        .apply(lambda x: x.split(',')[-1].strip().split(' ')[0].replace('.', ''))
+    df['Ticket'] = df['Ticket'] \
+        .apply(adjust_ticket)
+    df['Cabin'] = df['Cabin'] \
+        .apply(adjust_cabin)
 
 
-if __name__ == '__main__':
-    # base_dir = os.path.dirname(os.path.abspath(__file__))
-    base_dir = "D:\\GitHub\\ml4p-structured-data\\examples\\titanic"
+def main():
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    model_dir = os.path.join(base_dir, 'model')
+    data_config_dir = os.path.join(base_dir, 'data_config')
     input_file_name = os.path.join(base_dir, 'train.csv')
+    hash_key = util.get_hash()
 
     # ------------------------------------------------------------------------------------------------------------------
     # Pre-process data
@@ -44,12 +43,17 @@ if __name__ == '__main__':
     with open(os.path.join(base_dir, 'preprocess_config.json'), 'r') as f:
         data_config = json.load(f)
 
-    data_handler = TitanicDataProcessor(config=data_config)
+    data_handler = DataProcessor(train=True,
+                                 config=data_config)
     data_handler.fetch_data(source_type='file',
                             input_type='csv',
                             file_path=input_file_name)
+    data_handler.add_custom_func(func=custom_func)
     data_handler.data_processing()
     split_data, all_data = data_handler.get_training_data()
+    util.save_data_config(handler=data_handler,
+                          output_dir=data_config_dir,
+                          suffix=hash_key)
 
     # ------------------------------------------------------------------------------------------------------------------
     # Model training
@@ -70,11 +74,9 @@ if __name__ == '__main__':
 
     model_handler.train_model()
     model_handler.report_results()
+    model_handler.save_model(output_dir=model_dir,
+                             index=hash_key)
 
-    # ------------------------------------------------------------------------------------------------------------------
-    # Export the agents
-    # ------------------------------------------------------------------------------------------------------------------
-    util.save_agent(agent=data_handler,
-                    path='data_handler.pickle')
-    util.save_agent(agent=model_handler,
-                    path='model_handler.pickle')
+
+if __name__ == '__main__':
+    main()

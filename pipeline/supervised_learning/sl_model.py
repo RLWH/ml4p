@@ -51,18 +51,24 @@ class TrainModelHandler:
             settings = self.setting_dict[key]
             self.model_dict[key].train_model(**settings)
 
-    def eval_model(self):
-        for key in self.model_dict.keys():
-            print('[{}] Evaluating {}'.format(util.get_time_now(), key))
-            self.model_dict[key].eval_model()
-
     def report_results(self):
         for key in self.model_dict.keys():
             print('{}: {}'.format(key, self.model_dict[key].eval))
 
-    def save_model(self, key):
-        settings = self.setting_dict[key]
-        self.model_dict[key].save_model(**settings)
+    def save_model(self, output_dir, index=util.get_hash(), save_all=True, key=None):
+        if not save_all and (key is None or key not in self.model_dict.keys()):
+            raise ValueError("Invalid model key")
+        adj_output_dir = os.path.join(output_dir, index)
+        if not os.path.exists(adj_output_dir):
+            os.makedirs(adj_output_dir)
+        if save_all:
+            for k in self.model_dict.keys():
+                self.model_dict[k].save_model(output_dir=adj_output_dir,
+                                              filename=k)
+        else:
+            path = os.path.join(adj_output_dir, '{}_{}'.format(key, index))
+            self.model_dict[key].save_model(output_dir=adj_output_dir,
+                                            filename=key)
 
     def del_model(self, model_name):
         del self.model_dict[model_name]
@@ -155,14 +161,6 @@ class XGBModel(BaseModel):
                                dtrain=d_train_all,
                                num_boost_round=best_iter + 1,
                                verbose_eval=True)
-
-    def save_model(self, *args, **kwargs):
-        model_path = kwargs.get('model_path')
-        if model_path is None:
-            raise ValueError('output_path cannot be empty')
-        hash_code = util.get_hash()
-        with open(os.path.join(model_path, 'xgb_{}.pickle'.format(hash_code)), 'wb') as f:
-            pickle.dump(self.model, f, pickle.HIGHEST_PROTOCOL)
 
     def load_model(self, *args, **kwargs):
         model_path = kwargs.get('model_path')

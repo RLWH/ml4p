@@ -8,6 +8,7 @@ from h2o.estimators.glm import H2OGeneralizedLinearEstimator
 from h2o.estimators.naive_bayes import H2ONaiveBayesEstimator
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
 from sklearn.svm import SVC, SVR
+import glob
 import hyperopt
 import numpy as np
 import xgboost as xgb
@@ -20,7 +21,7 @@ class TrainModelHandler:
         self.model_dict = dict()
         self.setting_dict = dict()
 
-    def add_model(self, model_name, model_settings):
+    def add_model(self, model_name, model_settings=None):
         self.setting_dict[model_name] = model_settings
         if model_name == 'XGB':
             self.model_dict[model_name] = XGBModel()
@@ -66,9 +67,17 @@ class TrainModelHandler:
                 self.model_dict[k].save_model(output_dir=adj_output_dir,
                                               filename=k)
         else:
-            path = os.path.join(adj_output_dir, '{}_{}'.format(key, index))
             self.model_dict[key].save_model(output_dir=adj_output_dir,
                                             filename=key)
+
+    def load_model(self, input_dir):
+        model_path_list = glob.glob(os.path.join(input_dir, '*'))
+        for p in model_path_list:
+            model_key = os.path.basename(p)
+            dir_name = os.path.dirname(p)
+            self.add_model(model_name=model_key)
+            self.model_dict[model_key].load_model(input_dir=dir_name,
+                                                  filename=model_key)
 
     def del_model(self, model_name):
         del self.model_dict[model_name]
@@ -161,17 +170,6 @@ class XGBModel(BaseModel):
                                dtrain=d_train_all,
                                num_boost_round=best_iter + 1,
                                verbose_eval=True)
-
-    def load_model(self, *args, **kwargs):
-        model_path = kwargs.get('model_path')
-        model_name = kwargs.get('model_name')
-        if model_path is None:
-            raise ValueError('model_path is missing')
-        if model_name is None:
-            raise ValueError('model_name is missing')
-        self.model = xgb.Booster()
-        with open(os.path.join(model_path, model_name), 'rb') as f:
-            self.model = pickle.load(f)
 
     def predict(self, *args, **kwargs):
         data = kwargs.get('data')

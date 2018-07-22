@@ -68,7 +68,7 @@ class DataProcessor:
             setattr(self, k, v)
         self.config_loaded = True
 
-    def get_training_data(self):
+    def get_data(self):
         return self.split_data, self.all_data
 
     def add_custom_func(self, func):

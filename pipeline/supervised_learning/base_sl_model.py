@@ -71,10 +71,6 @@ class BaseModel:
         pass
 
     @abstractmethod
-    def load_model(self, *args, **kwargs):
-        pass
-
-    @abstractmethod
     def train_model(self, *args, **kwargs):
         pass
 
@@ -86,6 +82,11 @@ class BaseModel:
         # Override this method if the model cannot be pickled
         with open(os.path.join(output_dir, filename), 'wb') as f:
             pickle.dump(self.model, f, pickle.HIGHEST_PROTOCOL)
+
+    def load_model(self, input_dir, filename):
+        # Override this method if the model cannot be pickled
+        with open(os.path.join(input_dir, filename), 'rb') as f:
+            self.model = pickle.load(f)
 
 
 class BaseH2OModel(BaseModel):
@@ -212,8 +213,8 @@ class BaseH2OModel(BaseModel):
         self.model = self.h2o_estimator(**self.best_model_para)
         self.model.train(X_name, y_name, training_frame=d_train_all)
 
-    def load_model(self, *args, **kwargs):
-        pass
+    def load_model(self, input_dir, filename):
+        self.model = h2o.load_model(os.path.join(input_dir, filename))
 
     def save_model(self, output_dir, filename):
         self.model.model_id = filename
@@ -300,9 +301,6 @@ class BaseSKModel(BaseModel):
         all_train_y = BaseModel.all_data['train_y']
         self.model = self.sk_estimator(**self.best_model_para)
         self.model.fit(X=all_train_x, y=all_train_y)
-
-    def load_model(self, *args, **kwargs):
-        pass
 
     def predict(self, *args, **kwargs):
         pass

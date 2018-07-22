@@ -32,17 +32,25 @@ def custom_func(df):
 
 def main():
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    model_dir = os.path.join(base_dir, 'model')
-    data_config_dir = os.path.join(base_dir, 'data_config')
-    input_file_name = os.path.join(base_dir, 'train.csv')
+    model_output_dir = os.path.join(base_dir, 'model_output')
+    config_output_dir = os.path.join(base_dir, 'data_config_output')
+    config_dir = os.path.join(base_dir, 'config')
+    data_dir = os.path.join(base_dir, 'data')
+    if not os.path.exists(model_output_dir):
+        os.makedirs(model_output_dir)
+    if not os.path.exists(config_output_dir):
+        os.makedirs(config_output_dir)
+
+    input_file_name = os.path.join(data_dir, 'train.csv')
     hash_key = util.get_hash()
+    with open(os.path.join(config_dir, 'preprocess_config.json'), 'r') as f:
+        data_config = json.load(f)
+    with open(os.path.join(config_dir, 'model_config.json'), 'r') as f:
+        model_config = json.load(f)
 
     # ------------------------------------------------------------------------------------------------------------------
     # Pre-process data
     # ------------------------------------------------------------------------------------------------------------------
-    with open(os.path.join(base_dir, 'preprocess_config.json'), 'r') as f:
-        data_config = json.load(f)
-
     data_handler = DataProcessor(train=True,
                                  config=data_config)
     data_handler.fetch_data(source_type='file',
@@ -50,17 +58,14 @@ def main():
                             file_path=input_file_name)
     data_handler.add_custom_func(func=custom_func)
     data_handler.data_processing()
-    split_data, all_data = data_handler.get_training_data()
+    split_data, all_data = data_handler.get_data()
     util.save_data_config(handler=data_handler,
-                          output_dir=data_config_dir,
+                          output_dir=config_output_dir,
                           suffix=hash_key)
 
     # ------------------------------------------------------------------------------------------------------------------
     # Model training
     # ------------------------------------------------------------------------------------------------------------------
-    with open(os.path.join(base_dir, 'model_config.json'), 'r') as f:
-        model_config = json.load(f)
-
     model_pipeline = model_config.get('PIPELINE')
     model_handler = sl_model.TrainModelHandler()
     sl_model.BaseModel.set_data(split_data=split_data,
@@ -74,7 +79,7 @@ def main():
 
     model_handler.train_model()
     model_handler.report_results()
-    model_handler.save_model(output_dir=model_dir,
+    model_handler.save_model(output_dir=model_output_dir,
                              index=hash_key)
 
 

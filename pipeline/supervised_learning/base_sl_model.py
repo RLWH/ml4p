@@ -26,7 +26,7 @@ class BaseModel:
         self.auto_tune_rounds = None
 
     @classmethod
-    def set_data(cls, split_data, all_data):
+    def set_data(cls, split_data=None, all_data=None):
         cls.split_data = split_data
         cls.all_data = all_data
 
@@ -222,8 +222,14 @@ class BaseH2OModel(BaseModel):
                        path=output_dir,
                        force=True)
 
-    def predict(self, *args, **kwargs):
-        pass
+    def predict(self, data=None):
+        if data is None:
+            data = BaseModel.all_data.get('train_x')
+        if self.model is None:
+            raise ValueError('model cannot be empty. Train or load model first before making predictions')
+        h2o_data = h2o.H2OFrame(data)
+        pred = self.model.predict(h2o_data)
+        return pred
 
 
 class BaseSKModel(BaseModel):
@@ -302,5 +308,10 @@ class BaseSKModel(BaseModel):
         self.model = self.sk_estimator(**self.best_model_para)
         self.model.fit(X=all_train_x, y=all_train_y)
 
-    def predict(self, *args, **kwargs):
-        pass
+    def predict(self, data=None):
+        if data is None:
+            data = BaseModel.all_data.get('train_x')
+        if self.model is None:
+            raise ValueError('model cannot be empty. Train or load model first before making predictions')
+        pred = self.model.predict(data)
+        return pred

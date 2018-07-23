@@ -11,6 +11,9 @@
       "para": {
         "Age": {
           "strategy": "mean"
+        },
+        "Fare": {
+          "strategy": "mean"
         }
       }
     },

@@ -22,12 +22,9 @@ def custom_func(df):
         else:
             return 'others'
 
-    df['Name'] = df['Name'] \
-        .apply(lambda x: x.split(',')[-1].strip().split(' ')[0].replace('.', ''))
-    df['Ticket'] = df['Ticket'] \
-        .apply(adjust_ticket)
-    df['Cabin'] = df['Cabin'] \
-        .apply(adjust_cabin)
+    df['Name'] = df['Name'].apply(lambda x: x.split(',')[-1].strip().split(' ')[0].replace('.', ''))
+    df['Ticket'] = df['Ticket'].apply(adjust_ticket)
+    df['Cabin'] = df['Cabin'].apply(adjust_cabin)
 
 
 def main():

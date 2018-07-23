@@ -276,7 +276,7 @@
           },
           "remove_collinear_columns": {
             "mode": "fixed",
-            "values": true
+            "values": false
           },
           "seed": {
             "mode": "fixed",

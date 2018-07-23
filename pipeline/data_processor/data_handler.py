@@ -32,7 +32,7 @@ class DataProcessor:
                    'standardizer',
                    'imputer',
                    'custom_func',
-                   'col_list']
+                   'feature_col']
 
     def __init__(self, train=True, config=None):
         self.train = train
@@ -44,7 +44,7 @@ class DataProcessor:
         self.imputer = dict()
         self.dim_reducer = dict()
         self.custom_func = list()
-        self.col_list = list()
+        self.feature_col = None
         self.raw_data_df = pd.DataFrame()
         self.adj_data_df = pd.DataFrame()
         self.all_data = pd.DataFrame()
@@ -295,6 +295,7 @@ class DataProcessor:
 
             self.all_data = {'train_x': self.adj_data_df[feature_col],
                              'train_y': self.adj_data_df[target_col]}
+            self.feature_col = feature_col
 
             index_list = list(self.adj_data_df.index)
             record_count = len(index_list)
@@ -378,11 +379,10 @@ class DataProcessor:
             elif method == 'CUSTOM_FUNC':
                 self._custom_processing_func()
 
-        if self.train:
-            self.col_list = list(self.adj_data_df.columns)
-        else:
-            extra_col = sorted(list(set(self.adj_data_df.columns) - set(self.col_list)))
+        if not self.train:
+            extra_col = sorted(list(set(self.adj_data_df.columns) - set(self.feature_col)))
             if extra_col:
                 print('The {} extra columns {} will be dropped'.format(len(extra_col), ', '.join(extra_col)))
                 self.adj_data_df.drop(extra_col, axis=1, inplace=True)
+            self.adj_data_df = self.adj_data_df[self.feature_col]
             self.all_data = {'train_x': self.adj_data_df}

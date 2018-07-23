@@ -13,13 +13,13 @@ import hyperopt
 import numpy as np
 import xgboost as xgb
 import os
-import pickle
 
 
 class TrainModelHandler:
     def __init__(self):
         self.model_dict = dict()
         self.setting_dict = dict()
+        self.pred_dict = dict()
 
     def add_model(self, model_name, model_settings=None):
         self.setting_dict[model_name] = model_settings
@@ -78,6 +78,10 @@ class TrainModelHandler:
             self.add_model(model_name=model_key)
             self.model_dict[model_key].load_model(input_dir=dir_name,
                                                   filename=model_key)
+
+    def predict(self):
+        for key in self.model_dict.keys():
+            self.pred_dict[key] = self.model_dict[key].predict()
 
     def del_model(self, model_name):
         del self.model_dict[model_name]
@@ -165,21 +169,21 @@ class XGBModel(BaseModel):
                      'value': metric_val}
 
         # Train on all data
+        BaseModel.all_data['train_x'].to_csv('check_1.csv')
         d_train_all = xgb.DMatrix(BaseModel.all_data['train_x'], label=BaseModel.all_data['train_y'])
         self.model = xgb.train(params=self.best_model_para,
                                dtrain=d_train_all,
                                num_boost_round=best_iter + 1,
                                verbose_eval=True)
 
-    def predict(self, *args, **kwargs):
-        data = kwargs.get('data')
+    def predict(self, data=None):
         if data is None:
-            raise ValueError('data cannot be empty')
+            data = BaseModel.all_data.get('train_x')
         if self.model is None:
             raise ValueError('model cannot be empty. Train or load model first before making predictions')
         d_data = xgb.DMatrix(data)
-        predictions = self.model.predict(d_data)
-        return predictions
+        pred = self.model.predict(d_data)
+        return pred
 
 
 class GBMModel(BaseH2OModel):

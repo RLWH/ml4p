@@ -27,10 +27,11 @@ def main(args):
 
     # Make predictions from imported models
     model_handler = sl_model.TrainModelHandler()
-    sl_model.BaseModel.set_data(split_data=None,
-                                all_data=all_data)
+    sl_model.BaseModel.set_data(all_data=all_data)
     model_handler.load_model(input_dir=adj_model_dir)
-    print(model_handler.model_dict)
+    model_handler.predict()
+
+    # TODO: Allow ensemble of model predictions
 
 
 if __name__ == '__main__':

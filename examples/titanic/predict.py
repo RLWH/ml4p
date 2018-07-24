@@ -18,7 +18,7 @@ def main(args):
     data_config = util.load_data_config(input_dir=data_config_dir,
                                         filename=data_config_name)
     data_handler = DataProcessor(train=False)
-    data_handler.load_from_dict(pickle_dict=data_config)
+    data_handler.load_data_config(config=data_config)
     data_handler.fetch_data(source_type='file',
                             input_type='csv',
                             file_path=os.path.join(data_dir, 'test.csv'))
@@ -26,7 +26,7 @@ def main(args):
     _, all_data = data_handler.get_data()
 
     # Make predictions from imported models
-    model_handler = sl_model.TrainModelHandler()
+    model_handler = sl_model.ModelHandler(config=None)
     sl_model.BaseModel.set_data(all_data=all_data)
     model_handler.load_model(input_dir=adj_model_dir)
     model_handler.predict()

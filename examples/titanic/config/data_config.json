@@ -1,4 +1,10 @@
 {
+  "OUTPUT_DIR": "D:\\GitHub\\ml4p-structured-data\\examples\\titanic\\data_config_output",
+  "DATA_FILE_SETTINGS": {
+    "file_path": "D:\\GitHub\\ml4p-structured-data\\examples\\titanic\\data\\train.csv",
+    "source_type": "file",
+    "input_type": "csv"
+  },
   "PIPELINE": [
     {
       "method": "DROP_COL",

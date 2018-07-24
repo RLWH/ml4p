@@ -1,10 +1,16 @@
 from __future__ import absolute_import
 from sklearn import preprocessing as sk_preprocess
 from sklearn import decomposition as sk_decomposition
+from ..misc import util
+import json
+import marshal
 import numpy as np
+import os
 import pandas as pd
+import pickle
 import pyodbc
 import random
+import types
 
 
 class DataProcessor:
@@ -25,7 +31,13 @@ class DataProcessor:
                                'DIM_REDUCTION',
                                'TRAIN_TEST_SPLIT',
                                'CUSTOM_FUNC']
-    pickle_list = ['config',
+    required_config_field = ['DATA_FILE_SETTINGS',
+                             'OUTPUT_DIR',
+                             'PIPELINE']
+    required_data_settings_field = ['file_path',
+                                    'source_type',
+                                    'input_type']
+    output_list = ['config',
                    'one_n_encoder',
                    'one_hot_encoder',
                    'normalizer',
@@ -34,9 +46,11 @@ class DataProcessor:
                    'custom_func',
                    'feature_col']
 
-    def __init__(self, train=True, config=None):
+    def __init__(self, train=True, config_path=None):
         self.train = train
-        self.config = config
+        self.config_path = config_path
+        self.split_data = list()
+        self.config_loaded = False
         self.one_n_encoder = dict()
         self.one_hot_encoder = dict()
         self.normalizer = dict()
@@ -48,23 +62,40 @@ class DataProcessor:
         self.raw_data_df = pd.DataFrame()
         self.adj_data_df = pd.DataFrame()
         self.all_data = pd.DataFrame()
-        self.split_data = list()
-        self.config_loaded = False
 
+        self.config = None
         if self.train:
-            if type(config) is not dict:
-                raise ValueError("config must be a dictionary")
-            if config.get('PIPELINE') is None:
-                raise ValueError("PIPELINE is missing from config")
+            if not os.path.isfile(path=config_path):
+                raise FileNotFoundError("Data config not found")
+            else:
+                with open(self.config_path, 'r') as f:
+                    self.config = json.load(f)
+                if type(self.config) is not dict:
+                    raise ValueError("config must be a dictionary")
+                for rf in DataProcessor.required_config_field:
+                    if self.config.get(rf) is None:
+                        raise ValueError("{} is missing from config".format(rf))
 
-    def get_dict(self):
+    def _get_config(self):
         pickle_dict = dict()
-        for p in DataProcessor.pickle_list:
+        for p in DataProcessor.output_list:
             pickle_dict[p] = getattr(self, p)
         return pickle_dict
 
-    def load_from_dict(self, pickle_dict):
-        for k, v in pickle_dict.items():
+    def save_data_config(self, hash_=util.get_hash()):
+        output_dir = self.config.get('OUTPUT_DIR')
+        dump_dict = self._get_config()
+        dump_dict['custom_func'] = [marshal.dumps(x.__code__) for x in dump_dict['custom_func']]
+        file_name = 'data_config_{}.dat'.format(hash_)
+        with open(os.path.join(output_dir, file_name), 'wb') as f:
+            pickle.dump(dump_dict, f, pickle.HIGHEST_PROTOCOL)
+
+    def load_data_config(self, input_dir, hash_):
+        with open(os.path.join(input_dir, 'data_config_{}.dat'.format(hash_)), 'rb') as f:
+            data_config = pickle.load(f)
+        data_config['custom_func'] = [types.FunctionType(marshal.loads(x), globals()) for x in
+                                      data_config['custom_func']]
+        for k, v in data_config.items():
             setattr(self, k, v)
         self.config_loaded = True
 
@@ -98,16 +129,23 @@ class DataProcessor:
             data.columns = col_name
         self.raw_data_df = data
 
-    def fetch_data(self, source_type, input_type, **kwargs):
+    def fetch_data(self):
+        data_settings = self.config.get('DATA_FILE_SETTINGS')
+        for rf in DataProcessor.required_data_settings_field:
+            if data_settings.get(rf) is None:
+                raise ValueError("{} in DATA_FILE_SETTINGS is missing".format(rf))
+
         # File parameters
-        file_path = kwargs.get('file_path', None)
-        file_encoding = kwargs.get('file_encoding', 'utf-8')
-        header = kwargs.get('header', 0)
+        file_path = data_settings.get('file_path')
+        source_type = data_settings.get('source_type')
+        input_type = data_settings.get('input_type')
+        file_encoding = data_settings.get('file_encoding', 'utf-8')
+        header = data_settings.get('header', 0)
 
         # Database parameters
-        dsn = kwargs.get('dsn', None)
-        sql_query = kwargs.get('sql_query', None)
-        db_encoding = kwargs.get('db_encoding', 'utf-8')
+        dsn = data_settings.get('dsn', None)
+        sql_query = data_settings.get('sql_query', None)
+        db_encoding = data_settings.get('db_encoding', 'utf-8')
 
         if source_type not in DataProcessor.valid_source:
             raise NotImplementedError("Source type is not supported")

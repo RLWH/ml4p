@@ -15,36 +15,57 @@ import xgboost as xgb
 import os
 
 
-class TrainModelHandler:
-    def __init__(self):
+class ModelHandler:
+    valid_model_list = ['XGB',
+                        'GBM',
+                        'RF',
+                        'MLP',
+                        'GLM',
+                        'NB',
+                        'LDA',
+                        'QDA',
+                        'SVC',
+                        'SVR']
+    valid_task = ['classification',
+                  'regression']
+
+    def __init__(self, config):
         self.model_dict = dict()
         self.setting_dict = dict()
         self.pred_dict = dict()
+        self.model_pipeline = config.get('PIPELINE')
+        self.task = config.get('TASK')
+        if self.model_pipeline is None:
+            raise ValueError('PIPELINE is not found in config')
+        if self.task is None:
+            raise ValueError('TASK is not found in config')
 
-    def add_model(self, model_name, model_settings=None):
-        self.setting_dict[model_name] = model_settings
-        if model_name == 'XGB':
-            self.model_dict[model_name] = XGBModel()
-        elif model_name == 'GBM':
-            self.model_dict[model_name] = GBMModel()
-        elif model_name == 'RF':
-            self.model_dict[model_name] = RFModel()
-        elif model_name == 'MLP':
-            self.model_dict[model_name] = MLPModel()
-        elif model_name == 'GLM':
-            self.model_dict[model_name] = GLMModel()
-        elif model_name == 'NB':
-            self.model_dict[model_name] = NBModel()
-        elif model_name == 'LDA':
-            self.model_dict[model_name] = LDAModel()
-        elif model_name == 'QDA':
-            self.model_dict[model_name] = QDAModel()
-        elif model_name == 'SVC':
-            self.model_dict[model_name] = SVCModel()
-        elif model_name == 'SVR':
-            self.model_dict[model_name] = SVRModel()
-        else:
-            raise ValueError('Model {} is not implemented'.format(model_name))
+    def add_model(self):
+        for model_name, model_settings in self.model_pipeline.items():
+            if model_name not in ModelHandler.valid_model_list:
+                print('Model {} is not implemented'.format(model_name))
+            else:
+                self.setting_dict[model_name] = model_settings
+                if model_name == 'XGB':
+                    self.model_dict[model_name] = XGBModel()
+                elif model_name == 'GBM':
+                    self.model_dict[model_name] = GBMModel()
+                elif model_name == 'RF':
+                    self.model_dict[model_name] = RFModel()
+                elif model_name == 'MLP':
+                    self.model_dict[model_name] = MLPModel()
+                elif model_name == 'GLM':
+                    self.model_dict[model_name] = GLMModel()
+                elif model_name == 'NB':
+                    self.model_dict[model_name] = NBModel()
+                elif model_name == 'LDA':
+                    self.model_dict[model_name] = LDAModel()
+                elif model_name == 'QDA':
+                    self.model_dict[model_name] = QDAModel()
+                elif model_name == 'SVC':
+                    self.model_dict[model_name] = SVCModel()
+                elif model_name == 'SVR':
+                    self.model_dict[model_name] = SVRModel()
 
     def train_model(self):
         for key in self.model_dict.keys():

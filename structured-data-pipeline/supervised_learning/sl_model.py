@@ -10,9 +10,10 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticD
 from sklearn.svm import SVC, SVR
 import glob
 import hyperopt
+import json
 import numpy as np
-import xgboost as xgb
 import os
+import xgboost as xgb
 
 
 class ModelHandler:
@@ -29,16 +30,24 @@ class ModelHandler:
     valid_task = ['classification',
                   'regression']
 
-    def __init__(self, config):
+    def __init__(self, config_path):
         self.model_dict = dict()
         self.setting_dict = dict()
         self.pred_dict = dict()
-        self.model_pipeline = config.get('PIPELINE')
-        self.task = config.get('TASK')
-        if self.model_pipeline is None:
-            raise ValueError('PIPELINE is not found in config')
-        if self.task is None:
-            raise ValueError('TASK is not found in config')
+        self.config_path = config_path
+        if not os.path.isfile(path=config_path):
+            raise FileNotFoundError("Data config not found")
+        else:
+            with open(self.config_path, 'r') as f:
+                self.config = json.load(f)
+            if type(self.config) is not dict:
+                raise ValueError("config must be a dictionary")
+            self.model_pipeline = self.config.get('PIPELINE')
+            self.task = self.config.get('TASK')
+            if self.model_pipeline is None:
+                raise ValueError('PIPELINE is not found in config')
+            if self.task is None:
+                raise ValueError('TASK is not found in config')
 
     def add_model(self):
         for model_name, model_settings in self.model_pipeline.items():

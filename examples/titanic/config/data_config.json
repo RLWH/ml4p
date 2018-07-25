@@ -1,0 +1,61 @@
+{
+  "OUTPUT_DIR": "D:\\GitHub\\ml4p-structured-data\\examples\\titanic\\data_config_output",
+  "DATA_FILE_SETTINGS": {
+    "file_path": "D:\\GitHub\\ml4p-structured-data\\examples\\titanic\\data\\train.csv",
+    "source_type": "file",
+    "input_type": "csv"
+  },
+  "PIPELINE": [
+    {
+      "method": "DROP_COL",
+      "para": [
+        "PassengerId"
+      ]
+    },
+    {
+      "method": "IMPUTE_COL",
+      "para": {
+        "Age": {
+          "strategy": "mean"
+        },
+        "Fare": {
+          "strategy": "mean"
+        }
+      }
+    },
+    {
+      "method": "FILL_NA",
+      "para": {
+        "Cabin": "Others",
+        "Embarked": "Others"
+      }
+    },
+    {
+      "method": "CUSTOM_FUNC"
+    },
+    {
+      "method": "ONE_HOT_ENCODE_COL",
+      "para": [
+        "Pclass",
+        "Name",
+        "Sex",
+        "Ticket",
+        "Cabin",
+        "Embarked"
+      ]
+    },
+    {
+      "method": "TRAIN_TEST_SPLIT",
+      "para": {
+        "split_method": "n-fold",
+        "split_proportion": {
+          "train": 0.8,
+          "test": 0.2
+        },
+        "target_col": [
+          "Survived"
+        ]
+      }
+    }
+  ]
+}

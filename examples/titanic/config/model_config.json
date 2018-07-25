@@ -1,0 +1,373 @@
+{
+  "TASK": "classification",
+  "PIPELINE": [
+    {
+      "model": "XGB",
+      "settings": {
+        "params": {
+          "eta": {
+            "mode": "auto",
+            "values": {
+              "min": 0.05,
+              "max": 0.3,
+              "dtype": "float"
+            }
+          },
+          "max_depth": {
+            "mode": "auto",
+            "values": {
+              "min": 4,
+              "max": 8,
+              "step": 1,
+              "dtype": "int"
+            }
+          },
+          "min_child_weight": {
+            "mode": "auto",
+            "values": {
+              "min": 1,
+              "max": 10,
+              "step": 1,
+              "dtype": "int"
+            }
+          },
+          "subsample": {
+            "mode": "fixed",
+            "values": 1.0
+          },
+          "colsample_bytree": {
+            "mode": "fixed",
+            "values": 1.0
+          },
+          "gamma": {
+            "mode": "auto",
+            "values": {
+              "min": 0.7,
+              "max": 0.9,
+              "dtype": "float"
+            }
+          },
+          "alpha": {
+            "mode": "fixed",
+            "values": 0.00002
+          },
+          "lambda": {
+            "mode": "fixed",
+            "values": 10
+          },
+          "seed": {
+            "mode": "fixed",
+            "values": 101
+          },
+          "objective": {
+            "mode": "fixed",
+            "values": "binary:logistic"
+          },
+          "eval_metric": {
+            "mode": "fixed",
+            "values": "auc"
+          }
+        },
+        "num_boost_round": 100,
+        "early_stopping_rounds": 20,
+        "maximize": true,
+        "verbose_eval": false,
+        "max_autotune_eval_rounds": 1
+      }
+    },
+    {
+      "model": "GBM",
+      "settings": {
+        "params": {
+          "ntrees": {
+            "mode": "fixed",
+            "values": 100
+          },
+          "learn_rate": {
+            "mode": "fixed",
+            "values": 0.1
+          },
+          "max_depth": {
+            "mode": "auto",
+            "values": {
+              "min": 4,
+              "max": 8,
+              "step": 1,
+              "dtype": "int"
+            }
+          },
+          "sample_rate": {
+            "mode": "fixed",
+            "values": 0.8
+          },
+          "col_sample_rate": {
+            "mode": "fixed",
+            "values": 0.8
+          },
+          "stopping_rounds": {
+            "mode": "fixed",
+            "values": 2
+          },
+          "stopping_tolerance": {
+            "mode": "fixed",
+            "values": 0.05
+          },
+          "stopping_metric": {
+            "mode": "fixed",
+            "values": "auc"
+          },
+          "seed": {
+            "mode": "fixed",
+            "values": 101
+          },
+          "distribution": {
+            "mode": "fixed",
+            "values": "bernoulli"
+          }
+        },
+        "eval_metric": "auc",
+        "maximize": true,
+        "max_autotune_eval_rounds": 1
+      }
+    },
+    {
+      "model": "RF",
+      "settings": {
+        "params": {
+          "ntrees": {
+            "mode": "fixed",
+            "values": 100
+          },
+          "max_depth": {
+            "mode": "auto",
+            "values": {
+              "min": 4,
+              "max": 8,
+              "step": 1,
+              "dtype": "int"
+            }
+          },
+          "min_rows": {
+            "mode": "auto",
+            "values": {
+              "min": 10,
+              "max": 100,
+              "step": 1,
+              "dtype": "int"
+            }
+          },
+          "mtries": {
+            "mode": "fixed",
+            "values": -1
+          },
+          "sample_rate": {
+            "mode": "fixed",
+            "values": 0.8
+          },
+          "stopping_rounds": {
+            "mode": "fixed",
+            "values": 2
+          },
+          "stopping_tolerance": {
+            "mode": "fixed",
+            "values": 0.05
+          },
+          "stopping_metric": {
+            "mode": "fixed",
+            "values": "auc"
+          },
+          "seed": {
+            "mode": "fixed",
+            "values": 101
+          },
+          "distribution": {
+            "mode": "fixed",
+            "values": "bernoulli"
+          }
+        },
+        "maximize": true,
+        "eval_metric": "auc",
+        "max_autotune_eval_rounds": 1
+      }
+    },
+    {
+      "model": "MLP",
+      "settings": {
+        "params": {
+          "epochs": {
+            "mode": "fixed",
+            "values": 10
+          },
+          "hidden": {
+            "mode": "fixed",
+            "values": [
+              32,
+              32
+            ]
+          },
+          "input_dropout_ratio": {
+            "mode": "auto",
+            "values": {
+              "min": 0.2,
+              "max": 0.5,
+              "dtype": "float"
+            }
+          },
+          "activation": {
+            "mode": "fixed",
+            "values": "RectifierWithDropout"
+          },
+          "l1": {
+            "mode": "fixed",
+            "values": 1e-5
+          },
+          "stopping_rounds": {
+            "mode": "fixed",
+            "values": 2
+          },
+          "stopping_tolerance": {
+            "mode": "fixed",
+            "values": 0.05
+          },
+          "stopping_metric": {
+            "mode": "fixed",
+            "values": "auc"
+          },
+          "seed": {
+            "mode": "fixed",
+            "values": 101
+          },
+          "distribution": {
+            "mode": "fixed",
+            "values": "bernoulli"
+          }
+        },
+        "maximize": true,
+        "eval_metric": "auc",
+        "max_autotune_eval_rounds": 1
+      }
+    },
+    {
+      "model": "GLM",
+      "settings": {
+        "params": {
+          "family": {
+            "mode": "fixed",
+            "values": "binomial"
+          },
+          "early_stopping": {
+            "mode": "fixed",
+            "values": true
+          },
+          "alpha": {
+            "mode": "auto",
+            "values": {
+              "min": 0.1,
+              "max": 0.8,
+              "dtype": "float"
+            }
+          },
+          "Lambda": {
+            "mode": "auto",
+            "values": {
+              "min": 0,
+              "max": 1,
+              "dtype": "float"
+            }
+          },
+          "remove_collinear_columns": {
+            "mode": "fixed",
+            "values": false
+          },
+          "seed": {
+            "mode": "fixed",
+            "values": 101
+          }
+        },
+        "maximize": true,
+        "eval_metric": "auc",
+        "max_autotune_eval_rounds": 1
+      }
+    },
+    {
+      "model": "NB",
+      "settings": {
+        "params": {
+          "laplace": {
+            "mode": "auto",
+            "values": {
+              "min": 1,
+              "max": 5,
+              "dtype": "float"
+            }
+          },
+          "seed": {
+            "mode": "fixed",
+            "values": 101
+          }
+        },
+        "maximize": true,
+        "eval_metric": "auc",
+        "max_autotune_eval_rounds": 1
+      }
+    },
+    {
+      "model": "LDA",
+      "settings": {
+        "params": {
+          "n_components": {
+            "mode": "auto",
+            "values": {
+              "min": 3,
+              "max": 10,
+              "dtype": "float"
+            }
+          }
+        },
+        "maximize": true,
+        "eval_metric": "roc_auc_score",
+        "max_autotune_eval_rounds": 1
+      }
+    },
+    {
+      "model": "QDA",
+      "settings": {
+        "params": {
+          "reg_param": {
+            "mode": "auto",
+            "values": {
+              "min": 0,
+              "max": 1,
+              "dtype": "float"
+            }
+          }
+        },
+        "maximize": true,
+        "eval_metric": "roc_auc_score",
+        "max_autotune_eval_rounds": 1
+      }
+    },
+    {
+      "model": "SVC",
+      "settings": {
+        "params": {
+          "C": {
+            "mode": "auto",
+            "values": {
+              "min": 1,
+              "max": 5,
+              "dtype": "float"
+            }
+          },
+          "probability": {
+            "mode": "fixed",
+            "values": true
+          }
+        },
+        "maximize": true,
+        "eval_metric": "roc_auc_score",
+        "max_autotune_eval_rounds": 1
+      }
+    }
+  ]
+}

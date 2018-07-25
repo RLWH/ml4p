@@ -1,10 +1,34 @@
 {
+  "OUTPUT_DIR": "D:\\GitHub\\ml4p-structured-data\\examples\\titanic\\data_config_output",
+  "DATA_FILE_SETTINGS": {
+    "file_path": "D:\\GitHub\\ml4p-structured-data\\examples\\titanic\\data\\train.csv",
+    "source_type": "file",
+    "input_type": "csv"
+  },
   "PIPELINE": [
     {
       "method": "DROP_COL",
       "para": [
         "PassengerId"
       ]
+    },
+    {
+      "method": "IMPUTE_COL",
+      "para": {
+        "Age": {
+          "strategy": "mean"
+        },
+        "Fare": {
+          "strategy": "mean"
+        }
+      }
+    },
+    {
+      "method": "FILL_NA",
+      "para": {
+        "Cabin": "Others",
+        "Embarked": "Others"
+      }
     },
     {
       "method": "CUSTOM_FUNC"

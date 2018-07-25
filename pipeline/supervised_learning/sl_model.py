@@ -1,43 +1,71 @@
 from __future__ import absolute_import
-from .base_sl_model import BaseModel, BaseH2OModel
+from .base_sl_model import BaseModel, BaseH2OModel, BaseSKModel
 from ..misc import util
 from h2o.estimators.gbm import H2OGradientBoostingEstimator
 from h2o.estimators.random_forest import H2ORandomForestEstimator
 from h2o.estimators.deeplearning import H2ODeepLearningEstimator
 from h2o.estimators.glm import H2OGeneralizedLinearEstimator
 from h2o.estimators.naive_bayes import H2ONaiveBayesEstimator
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
+from sklearn.svm import SVC, SVR
+import glob
 import hyperopt
 import numpy as np
 import xgboost as xgb
 import os
-import pickle
 
 
-class TrainModelHandler:
-    def __init__(self):
+class ModelHandler:
+    valid_model_list = ['XGB',
+                        'GBM',
+                        'RF',
+                        'MLP',
+                        'GLM',
+                        'NB',
+                        'LDA',
+                        'QDA',
+                        'SVC',
+                        'SVR']
+    valid_task = ['classification',
+                  'regression']
+
+    def __init__(self, config):
         self.model_dict = dict()
         self.setting_dict = dict()
+        self.pred_dict = dict()
+        self.model_pipeline = config.get('PIPELINE')
+        self.task = config.get('TASK')
+        if self.model_pipeline is None:
+            raise ValueError('PIPELINE is not found in config')
+        if self.task is None:
+            raise ValueError('TASK is not found in config')
 
-    def add_model(self, model_name, model_settings):
-        self.setting_dict[model_name] = model_settings
-        if model_name == 'XGB':
-            self.model_dict[model_name] = XGBModel()
-        elif model_name == 'GBM':
-            self.model_dict[model_name] = GBMModel()
-        elif model_name == 'RF':
-            self.model_dict[model_name] = RFModel()
-        elif model_name == 'MLP':
-            self.model_dict[model_name] = MLPModel()
-        elif model_name == 'GLM':
-            self.model_dict[model_name] = GLMModel()
-        elif model_name == 'NB':
-            self.model_dict[model_name] = NBModel()
-        elif model_name == 'LDA':
-            self.model_dict[model_name] = LDAModel()
-        elif model_name == 'SVM':
-            self.model_dict[model_name] = SVMModel()
-        else:
-            raise ValueError('Model {} is not implemented'.format(model_name))
+    def add_model(self):
+        for model_name, model_settings in self.model_pipeline.items():
+            if model_name not in ModelHandler.valid_model_list:
+                print('Model {} is not implemented'.format(model_name))
+            else:
+                self.setting_dict[model_name] = model_settings
+                if model_name == 'XGB':
+                    self.model_dict[model_name] = XGBModel()
+                elif model_name == 'GBM':
+                    self.model_dict[model_name] = GBMModel()
+                elif model_name == 'RF':
+                    self.model_dict[model_name] = RFModel()
+                elif model_name == 'MLP':
+                    self.model_dict[model_name] = MLPModel()
+                elif model_name == 'GLM':
+                    self.model_dict[model_name] = GLMModel()
+                elif model_name == 'NB':
+                    self.model_dict[model_name] = NBModel()
+                elif model_name == 'LDA':
+                    self.model_dict[model_name] = LDAModel()
+                elif model_name == 'QDA':
+                    self.model_dict[model_name] = QDAModel()
+                elif model_name == 'SVC':
+                    self.model_dict[model_name] = SVCModel()
+                elif model_name == 'SVR':
+                    self.model_dict[model_name] = SVRModel()
 
     def train_model(self):
         for key in self.model_dict.keys():
@@ -45,18 +73,36 @@ class TrainModelHandler:
             settings = self.setting_dict[key]
             self.model_dict[key].train_model(**settings)
 
-    def eval_model(self):
-        for key in self.model_dict.keys():
-            print('[{}] Evaluating {}'.format(util.get_time_now(), key))
-            self.model_dict[key].eval_model()
-
     def report_results(self):
         for key in self.model_dict.keys():
             print('{}: {}'.format(key, self.model_dict[key].eval))
 
-    def save_model(self, key):
-        settings = self.setting_dict[key]
-        self.model_dict[key].save_model(**settings)
+    def save_model(self, output_dir, index=util.get_hash(), save_all=True, key=None):
+        if not save_all and (key is None or key not in self.model_dict.keys()):
+            raise ValueError("Invalid model key")
+        adj_output_dir = os.path.join(output_dir, index)
+        if not os.path.exists(adj_output_dir):
+            os.makedirs(adj_output_dir)
+        if save_all:
+            for k in self.model_dict.keys():
+                self.model_dict[k].save_model(output_dir=adj_output_dir,
+                                              filename=k)
+        else:
+            self.model_dict[key].save_model(output_dir=adj_output_dir,
+                                            filename=key)
+
+    def load_model(self, input_dir):
+        model_path_list = glob.glob(os.path.join(input_dir, '*'))
+        for p in model_path_list:
+            model_key = os.path.basename(p)
+            dir_name = os.path.dirname(p)
+            self.add_model(model_name=model_key)
+            self.model_dict[model_key].load_model(input_dir=dir_name,
+                                                  filename=model_key)
+
+    def predict(self):
+        for key in self.model_dict.keys():
+            self.pred_dict[key] = self.model_dict[key].predict()
 
     def del_model(self, model_name):
         del self.model_dict[model_name]
@@ -144,40 +190,21 @@ class XGBModel(BaseModel):
                      'value': metric_val}
 
         # Train on all data
+        BaseModel.all_data['train_x'].to_csv('check_1.csv')
         d_train_all = xgb.DMatrix(BaseModel.all_data['train_x'], label=BaseModel.all_data['train_y'])
         self.model = xgb.train(params=self.best_model_para,
                                dtrain=d_train_all,
                                num_boost_round=best_iter + 1,
                                verbose_eval=True)
 
-    def save_model(self, *args, **kwargs):
-        model_path = kwargs.get('model_path')
-        if model_path is None:
-            raise ValueError('output_path cannot be empty')
-        hash_code = util.get_hash()
-        with open(os.path.join(model_path, 'xgb_{}.pickle'.format(hash_code)), 'wb') as f:
-            pickle.dump(self.model, f, pickle.HIGHEST_PROTOCOL)
-
-    def load_model(self, *args, **kwargs):
-        model_path = kwargs.get('model_path')
-        model_name = kwargs.get('model_name')
-        if model_path is None:
-            raise ValueError('model_path is missing')
-        if model_name is None:
-            raise ValueError('model_name is missing')
-        self.model = xgb.Booster()
-        with open(os.path.join(model_path, model_name), 'rb') as f:
-            self.model = pickle.load(f)
-
-    def predict(self, *args, **kwargs):
-        data = kwargs.get('data')
+    def predict(self, data=None):
         if data is None:
-            raise ValueError('data cannot be empty')
+            data = BaseModel.all_data.get('train_x')
         if self.model is None:
             raise ValueError('model cannot be empty. Train or load model first before making predictions')
         d_data = xgb.DMatrix(data)
-        predictions = self.model.predict(d_data)
-        return predictions
+        pred = self.model.predict(d_data)
+        return pred
 
 
 class GBMModel(BaseH2OModel):
@@ -210,35 +237,25 @@ class NBModel(BaseH2OModel):
         self.h2o_estimator = H2ONaiveBayesEstimator
 
 
-class LDAModel(BaseModel):
-    def init_model(self, *args, **kwargs):
-        pass
-
-    def load_model(self, *args, **kwargs):
-        pass
-
-    def train_model(self, *args, **kwargs):
-        pass
-
-    def save_model(self, *args, **kwargs):
-        pass
-
-    def predict(self, *args, **kwargs):
-        pass
+class LDAModel(BaseSKModel):
+    def __init__(self):
+        super(LDAModel, self).__init__()
+        self.sk_estimator = LinearDiscriminantAnalysis
 
 
-class SVMModel(BaseModel):
-    def init_model(self, *args, **kwargs):
-        pass
+class QDAModel(BaseSKModel):
+    def __init__(self):
+        super(QDAModel, self).__init__()
+        self.sk_estimator = QuadraticDiscriminantAnalysis
 
-    def load_model(self, *args, **kwargs):
-        pass
 
-    def train_model(self, *args, **kwargs):
-        pass
+class SVCModel(BaseSKModel):
+    def __init__(self):
+        super(SVCModel, self).__init__()
+        self.sk_estimator = SVC
 
-    def save_model(self, *args, **kwargs):
-        pass
 
-    def predict(self, *args, **kwargs):
-        pass
+class SVRModel(BaseSKModel):
+    def __init__(self):
+        super(SVRModel, self).__init__()
+        self.sk_estimator = SVR

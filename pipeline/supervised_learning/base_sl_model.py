@@ -4,7 +4,10 @@ from hyperopt.pyll.base import scope
 import h2o
 import hyperopt
 import numpy as np
+import os
 import pandas as pd
+import pickle
+import sklearn.metrics
 
 
 class BaseModel:
@@ -23,7 +26,7 @@ class BaseModel:
         self.auto_tune_rounds = None
 
     @classmethod
-    def set_data(cls, split_data, all_data):
+    def set_data(cls, split_data=None, all_data=None):
         cls.split_data = split_data
         cls.all_data = all_data
 
@@ -68,20 +71,22 @@ class BaseModel:
         pass
 
     @abstractmethod
-    def load_model(self, *args, **kwargs):
-        pass
-
-    @abstractmethod
     def train_model(self, *args, **kwargs):
-        pass
-
-    @abstractmethod
-    def save_model(self, *args, **kwargs):
         pass
 
     @abstractmethod
     def predict(self, *args, **kwargs):
         pass
+
+    def save_model(self, output_dir, filename):
+        # Override this method if the model cannot be pickled
+        with open(os.path.join(output_dir, filename), 'wb') as f:
+            pickle.dump(self.model, f, pickle.HIGHEST_PROTOCOL)
+
+    def load_model(self, input_dir, filename):
+        # Override this method if the model cannot be pickled
+        with open(os.path.join(input_dir, filename), 'rb') as f:
+            self.model = pickle.load(f)
 
 
 class BaseH2OModel(BaseModel):
@@ -208,11 +213,105 @@ class BaseH2OModel(BaseModel):
         self.model = self.h2o_estimator(**self.best_model_para)
         self.model.train(X_name, y_name, training_frame=d_train_all)
 
-    def load_model(self, *args, **kwargs):
-        pass
+    def load_model(self, input_dir, filename):
+        self.model = h2o.load_model(os.path.join(input_dir, filename))
 
-    def save_model(self, *args, **kwargs):
-        pass
+    def save_model(self, output_dir, filename):
+        self.model.model_id = filename
+        h2o.save_model(model=self.model,
+                       path=output_dir,
+                       force=True)
 
-    def predict(self, *args, **kwargs):
-        pass
+    def predict(self, data=None):
+        if data is None:
+            data = BaseModel.all_data.get('train_x')
+        if self.model is None:
+            raise ValueError('model cannot be empty. Train or load model first before making predictions')
+        h2o_data = h2o.H2OFrame(data)
+        pred = self.model.predict(h2o_data)
+        return pred
+
+
+class BaseSKModel(BaseModel):
+    valid_metric = [func for func in dir(sklearn.metrics) if callable(getattr(sklearn.metrics, func))]
+
+    def __init__(self):
+        super(BaseSKModel, self).__init__()
+        self.sk_estimator = None
+
+    @staticmethod
+    def get_metric(pred, actual, metric):
+        if metric == 'roc_auc_score':
+            adj_pred = [x[1] for x in pred]
+            eval_metric = getattr(sklearn.metrics, metric)(actual, adj_pred)
+        else:
+            eval_metric = getattr(sklearn.metrics, metric)(actual, pred)
+        return eval_metric
+
+    def _eval_results(self, hp_params):
+        loss_list = list()
+        maximize = self.other_para['maximize']
+        eval_metric_name = self.other_para['eval_metric_name']
+        for s in BaseModel.split_data:
+            train_x = s['train_x']
+            train_y = s['train_y']
+            test_x = s['test_x']
+            test_y = s['test_y']
+            model = self.sk_estimator(**hp_params)
+            model.fit(X=train_x, y=train_y)
+            pred = model.predict_proba(X=test_x)
+            eval_metric = self.get_metric(pred=pred, actual=test_y, metric=eval_metric_name)
+            if maximize:
+                loss = -1 * eval_metric
+            else:
+                loss = eval_metric
+            loss_list.append(loss)
+        output_dict = {'loss': np.average(loss_list),
+                       'status': hyperopt.STATUS_OK}
+        return output_dict
+
+    def train_model(self, *args, **kwargs):
+        params = kwargs.get('params')
+        maximize = kwargs.get('maximize')
+        eval_metric_name = kwargs.get('eval_metric')
+        max_autotune_eval_rounds = kwargs.get('max_autotune_eval_rounds')
+
+        if params is None:
+            raise ValueError("params is missing")
+        if maximize is None:
+            raise ValueError("maximize is missing")
+        if eval_metric_name is None:
+            raise ValueError("eval_metric is missing")
+
+        self.raw_model_para = params
+        self.other_para['eval_metric_name'] = eval_metric_name
+        self.other_para['maximize'] = maximize
+        self.auto_tune_rounds = max_autotune_eval_rounds
+        self.adj_params(after_ht=False)
+
+        # Auto-tuning parameters
+        if self.auto_tune:
+            self.adj_params(after_ht=True)
+
+        # Get evaluation metrics
+        eval_dict = self._eval_results(hp_params=self.best_model_para)
+        if maximize:
+            metric_val = -1 * eval_dict['loss']
+        else:
+            metric_val = eval_dict['loss']
+        self.eval = {'metric': self.other_para['eval_metric_name'],
+                     'value': metric_val}
+
+        # Train on all data
+        all_train_x = BaseModel.all_data['train_x']
+        all_train_y = BaseModel.all_data['train_y']
+        self.model = self.sk_estimator(**self.best_model_para)
+        self.model.fit(X=all_train_x, y=all_train_y)
+
+    def predict(self, data=None):
+        if data is None:
+            data = BaseModel.all_data.get('train_x')
+        if self.model is None:
+            raise ValueError('model cannot be empty. Train or load model first before making predictions')
+        pred = self.model.predict(data)
+        return pred
